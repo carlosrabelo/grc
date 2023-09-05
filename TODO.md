@@ -22,8 +22,8 @@
 
 ## Phase 05 — Config loading
 
-- [ ] Create `grc/internal/loader/loader.go` with `LoadConfig()` → validate extension → read file → parse YAML → validate config
-- [ ] Create `grc/internal/loader/loader_test.go` with tests for loading and error paths
+- [x] Create `grc/internal/loader/loader.go` with `LoadConfig()` → validate extension → read file → parse YAML → validate config
+- [x] Create `grc/internal/loader/loader_test.go` with tests for loading and error paths
 
 ## Phase 06 — Atom XML feed generation
 
