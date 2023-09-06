@@ -37,9 +37,9 @@
 
 ## Phase 08 — Main CLI
 
-- [ ] Create `grc/internal/app/app.go` with `Run()`, `parseCLIArgs()`, `validateRequiredArgs()`, `createLogger()`, `loadConfiguration()`, `generateXMLFeed()`, `resolveOutputPath()`, `persistXMLFile()`, `displayVersion()`, `displayHelp()`, `displaySuccessMessage()`
-- [ ] Create `grc/cmd/grc/main.go` with entry point (≤50 lines), `version`/`buildTime` variables via ldflags
-- [ ] Create `grc/internal/app/app_test.go` with CLI integration tests (basic execution, custom output, verbose, force, version, help, errors)
+- [x] Create `grc/internal/app/app.go` with `Run()`, `parseCLIArgs()`, `validateRequiredArgs()`, `createLogger()`, `loadConfiguration()`, `generateXMLFeed()`, `resolveOutputPath()`, `persistXMLFile()`, `displayVersion()`, `displayHelp()`, `displaySuccessMessage()`
+- [x] Create `grc/cmd/grc/main.go` with entry point (≤50 lines), `version`/`buildTime` variables via ldflags
+- [x] Create `grc/internal/app/app_test.go` with CLI integration tests (basic execution, custom output, verbose, force, version, help, errors)
 
 ## Phase 09 — Example YAML
 
