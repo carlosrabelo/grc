@@ -55,3 +55,56 @@
 
 - [x] Set up `golangci-lint`
 - [x] Push to GitHub and create GitHub Actions workflow for build + test on pushes and tags
+
+## Phase 12 — Gmail filter types
+
+- [ ] Extend `Filter` with `Criteria *GmailCriteria` and `Action *GmailAction`
+- [ ] Define structs `GmailCriteria` (From, To, Subject, HasTheWord, etc.) and `GmailAction` (Archive, MarkRead, Star, Delete, NeverSpam, AlwaysSpam, Label, Forward, SmartLabel, Category)
+- [ ] Keep backward compatibility: existing `expression` field continues to work
+
+## Phase 13 — Expression parser
+
+- [ ] Create `grc/internal/parser/parser.go` that parses Gmail search expressions into structured `Criteria` + `Action`
+- [ ] Support operators: `AND`, `OR`, `-` (negation), `from:`, `to:`, `subject:`, `has:`, `filename:`, `list:`, `after:`, `before:`, `older_than:`, `newer_than:`, `size:`, `larger:`, `smaller:`, `in:`, `is:`, `label:`, `cc:`, `bcc:`, `deliveredto:`
+- [ ] Handle quoted values and parenthesized groups
+- [ ] Create `grc/internal/parser/parser_test.go` with table-driven tests for all operators
+
+## Phase 14 — Gmail XML generation
+
+- [ ] Create `grc/internal/gmail/gmail.go` with `GenerateGmailXML()` that produces Gmail import XML (`apps:property` entries)
+- [ ] Map `GmailCriteria` fields to `apps:property` name/value pairs (from, to, subject, hasTheWord, hasAttachment, etc.)
+- [ ] Map `GmailAction` fields to `apps:property` actions (shouldArchive, shouldMarkAsRead, shouldStar, shouldDelete, etc.)
+- [ ] Create `grc/internal/gmail/gmail_test.go` with tests for all criteria/action combinations
+
+## Phase 15 — CLI `--format` flag
+
+- [ ] Add `--format atom|gmail` flag to CLI (default: `atom` for backward compatibility)
+- [ ] Wire `--format gmail` to `gmail.GenerateGmailXML()` pipeline
+- [ ] Update `resolveOutputPath()` to use `.gmail.xml` extension for gmail format
+- [ ] Update help text and tests
+- [ ] Create `cfg/example-gmail.yaml` with Gmail-specific criteria/action filters
+
+## Phase 16 — Gmail filter import (reverse)
+
+- [ ] Create `grc/internal/importer/importer.go` that reads Gmail export XML (Google Takeout) and produces `[]Filter`
+- [ ] Map `apps:property` criteria entries back to `GmailCriteria`
+- [ ] Map `apps:property` action entries back to `GmailAction`
+- [ ] Add `--import` flag or `grc import <gmail.xml>` subcommand
+- [ ] Create `grc/internal/importer/importer_test.go` with roundtrip tests
+
+## Phase 17 — Search query builder
+
+- [ ] Create `grc/internal/query/query.go` with `BuildSearchURL()` that generates `https://mail.google.com/mail/u/0/#search/...` links
+- [ ] Reconstruct Gmail search string from `GmailCriteria`
+- [ ] Create `grc/internal/query/query_test.go`
+
+## Phase 18 — YAML config with Gmail examples
+
+- [ ] Create `cfg/example-gmail.yaml` with filters using `criteria` + `action` (newsletter, support, invoices, etc.)
+- [ ] Demonstrate archive, label, star, markRead, forward, delete actions
+
+## Phase 19 — Gmail integration tests
+
+- [ ] End-to-end tests: YAML → parser → gmail XML → validate XML schema
+- [ ] Roundtrip tests: YAML → gmail XML → importer → YAML
+- [ ] Test `grc --format gmail` CLI integration
