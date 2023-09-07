@@ -2,12 +2,12 @@ MAKEFLAGS += --no-print-directory
 
 .DEFAULT_GOAL := help
 
-.PHONY: build clean fmt help quality test vet
+.PHONY: build clean fmt help lint quality test vet
 
 BINARY_NAME := grc
 VERSION    := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
-LDFLAGS    := -s -w -X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME)
+LDFLAGS    := -s -w -X github.com/carlosrabelo/grc/grc/internal/app.Version=$(VERSION) -X github.com/carlosrabelo/grc/grc/internal/app.BuildTime=$(BUILD_TIME)
 
 help: ## Show available targets
 	@echo "grc - Available targets"
@@ -22,7 +22,10 @@ build: ## Build binary
 test: ## Run all tests
 	@./.make/test.sh
 
-quality: ## Run all quality checks (fmt, vet, test)
+lint: ## Run golangci-lint
+	@golangci-lint run ./...
+
+quality: ## Run all quality checks (fmt, vet, lint, test)
 	@./.make/quality.sh
 
 fmt: ## Format Go source code

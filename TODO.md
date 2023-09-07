@@ -53,5 +53,5 @@
 
 ## Phase 11 — Quality and CI
 
-- [ ] Set up `golangci-lint`
-- [ ] Push to GitHub and create GitHub Actions workflow for build + test on pushes and tags
+- [x] Set up `golangci-lint`
+- [x] Push to GitHub and create GitHub Actions workflow for build + test on pushes and tags
