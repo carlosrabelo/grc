@@ -1,0 +1,62 @@
+defaults:
+  author:
+    name: GRC Feed Generator
+    email: grc@example.com
+  category:
+    term: email
+    scheme: http://example.com/categories
+    label: Email Category
+
+filters:
+  - name: Newsletter
+    expression: subject:(newsletter || weekly || digest)
+    category:
+      term: newsletter
+      label: Newsletters
+    author:
+      name: Newsletter Bot
+      email: newsletter@example.com
+
+  - name: Support
+    expression: subject:(support || help || ticket)
+    category:
+      term: support
+      label: Support Tickets
+    properties:
+      - name: priority
+        value: high
+
+  - name: Internal Notices
+    expression: from:(@internal.example.com)
+    category:
+      term: internal
+      label: Internal Notices
+    author:
+      name: Internal Comms
+      email: notices@internal.example.com
+
+  - name: Clients
+    expression: from:(@client-domain.com || @partner.org)
+    category:
+      term: clients
+      label: Client Communications
+    properties:
+      - name: account
+        value: enterprise
+
+  - name: Financial
+    expression: subject:(invoice || payment || receipt || billing)
+    category:
+      term: financial
+      label: Financial Documents
+    properties:
+      - name: sensitive
+        value: "true"
+      - name: retention
+        value: 7-years
+
+  - name: Spam
+    expression: subject:(viagra || lottery || free-money || click-here)
+    category:
+      term: spam
+      label: Spam Messages
