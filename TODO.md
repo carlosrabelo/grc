@@ -47,9 +47,9 @@
 
 ## Phase 10 — Documentation
 
-- [ ] Create `docs/GUIDE.md` with complete usage guide
-- [ ] Create `docs/GUIDE-PT.md` (Brazilian Portuguese)
-- [ ] `LICENSE` MIT
+- [x] Create `docs/GUIDE.md` with complete usage guide
+- [x] Create `docs/GUIDE-PT.md` (Brazilian Portuguese)
+- [x] `LICENSE` MIT
 
 ## Phase 11 — Quality and CI
 
