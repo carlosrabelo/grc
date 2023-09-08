@@ -23,11 +23,51 @@ type FiltersConfig struct {
 }
 
 type Filter struct {
-	Name       string     `yaml:"name"`
-	Expression string     `yaml:"expression"`
-	Category   *Category  `yaml:"category,omitempty"`
-	Properties []Property `yaml:"properties,omitempty"`
-	Author     *Author    `yaml:"author,omitempty"`
+	Name       string          `yaml:"name"`
+	Expression string          `yaml:"expression,omitempty"`
+	Category   *Category       `yaml:"category,omitempty"`
+	Properties []Property      `yaml:"properties,omitempty"`
+	Author     *Author         `yaml:"author,omitempty"`
+	Criteria   *GmailCriteria  `yaml:"criteria,omitempty"`
+	Action     *GmailAction    `yaml:"action,omitempty"`
+}
+
+type GmailCriteria struct {
+	From         string   `yaml:"from,omitempty"`
+	To           string   `yaml:"to,omitempty"`
+	Subject      string   `yaml:"subject,omitempty"`
+	HasTheWord   string   `yaml:"hasTheWord,omitempty"`
+	HasAttachment *bool   `yaml:"hasAttachment,omitempty"`
+	Is           string   `yaml:"is,omitempty"`
+	In           string   `yaml:"in,omitempty"`
+	Cc           string   `yaml:"cc,omitempty"`
+	Bcc          string   `yaml:"bcc,omitempty"`
+	DeliveredTo  string   `yaml:"deliveredto,omitempty"`
+	List         string   `yaml:"list,omitempty"`
+	Filename     string   `yaml:"filename,omitempty"`
+	After        string   `yaml:"after,omitempty"`
+	Before       string   `yaml:"before,omitempty"`
+	OlderThan    string   `yaml:"older_than,omitempty"`
+	NewerThan    string   `yaml:"newer_than,omitempty"`
+	Size         string   `yaml:"size,omitempty"`
+	Larger       string   `yaml:"larger,omitempty"`
+	Smaller      string   `yaml:"smaller,omitempty"`
+	Label        string   `yaml:"label,omitempty"`
+	Category     string   `yaml:"category,omitempty"`
+}
+
+type GmailAction struct {
+	Archive          *bool  `yaml:"archive,omitempty"`
+	MarkRead         *bool  `yaml:"markRead,omitempty"`
+	Star             *bool  `yaml:"star,omitempty"`
+	Delete           *bool  `yaml:"delete,omitempty"`
+	NeverSpam        *bool  `yaml:"neverSpam,omitempty"`
+	AlwaysSpam       *bool  `yaml:"alwaysSpam,omitempty"`
+	Forward          string `yaml:"forward,omitempty"`
+	Label            string `yaml:"label,omitempty"`
+	SmartLabel       string `yaml:"smartLabel,omitempty"`
+	Category         string `yaml:"category,omitempty"`
+	MoveToTrash      *bool  `yaml:"moveToTrash,omitempty"`
 }
 
 type Feed struct {

@@ -154,7 +154,72 @@ func TestFilter_EmptyName(t *testing.T) {
 func TestFilter_EmptyExpression(t *testing.T) {
 	err := Filter(&types.Filter{Name: "test", Expression: ""})
 	if err == nil {
-		t.Fatal("expected error for empty expression")
+		t.Fatal("expected error for empty expression (no criteria either)")
+	}
+}
+
+func TestFilter_WithCriteriaOnly(t *testing.T) {
+	err := Filter(&types.Filter{
+		Name: "test",
+		Criteria: &types.GmailCriteria{
+			From: "sender@example.com",
+		},
+	})
+	if err != nil {
+		t.Errorf("expected no error for criteria filter, got %v", err)
+	}
+}
+
+func TestFilter_WithCriteriaAndAction(t *testing.T) {
+	archive := true
+	err := Filter(&types.Filter{
+		Name: "test",
+		Criteria: &types.GmailCriteria{
+			Subject: "newsletter",
+		},
+		Action: &types.GmailAction{
+			Archive: &archive,
+			Label:   "Newsletters",
+		},
+	})
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+}
+
+func TestFilter_EmptyCriteria(t *testing.T) {
+	err := Filter(&types.Filter{
+		Name:     "test",
+		Criteria: &types.GmailCriteria{},
+	})
+	if err == nil {
+		t.Fatal("expected error for empty criteria object")
+	}
+}
+
+func TestFilter_ExpressionAndCriteria(t *testing.T) {
+	err := Filter(&types.Filter{
+		Name:       "test",
+		Expression: "subject:hello",
+		Criteria: &types.GmailCriteria{
+			From: "sender@example.com",
+		},
+	})
+	if err != nil {
+		t.Errorf("expected no error with both expression and criteria, got %v", err)
+	}
+}
+
+func TestFilter_ActionNoCriteria(t *testing.T) {
+	archive := true
+	err := Filter(&types.Filter{
+		Name: "test",
+		Action: &types.GmailAction{
+			Archive: &archive,
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for action without expression or criteria")
 	}
 }
 
