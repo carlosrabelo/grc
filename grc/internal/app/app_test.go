@@ -163,3 +163,72 @@ func TestRun_UnknownFlag(t *testing.T) {
 		t.Fatalf("expected exit 1, got %d", code)
 	}
 }
+
+func TestRun_FormatGmail(t *testing.T) {
+	input := writeTestYAML(t, "filters:\n  - name: test\n    criteria:\n      from: spam@example.com\n    action:\n      archive: true\n")
+	output := filepath.Join(t.TempDir(), "out.gmail.xml")
+
+	code := Run([]string{"--format", "gmail", input, output})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if _, err := os.Stat(output); os.IsNotExist(err) {
+		t.Error("expected output file to exist")
+	}
+}
+
+func TestRun_FormatGmailDefaultOutput(t *testing.T) {
+	input := writeTestYAML(t, "filters:\n  - name: test\n    criteria:\n      from: a@b.com\n")
+	expected := input[:len(input)-5] + ".gmail.xml"
+	t.Cleanup(func() { os.Remove(expected) })
+
+	code := Run([]string{"--format", "gmail", input})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if _, err := os.Stat(expected); os.IsNotExist(err) {
+		t.Error("expected .gmail.xml output file")
+	}
+}
+
+func TestRun_FormatAtomExplicit(t *testing.T) {
+	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n")
+	output := filepath.Join(t.TempDir(), "explicit.xml")
+
+	code := Run([]string{"--format", "atom", input, output})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if _, err := os.Stat(output); os.IsNotExist(err) {
+		t.Error("expected output file to exist")
+	}
+}
+
+func TestRun_FormatUnknown(t *testing.T) {
+	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n")
+
+	code := Run([]string{"--format", "pdf", input})
+	if code != 1 {
+		t.Fatalf("expected exit 1, got %d", code)
+	}
+}
+
+func TestRun_GmailCriteriaAction(t *testing.T) {
+	input := writeTestYAML(t, "filters:\n  - name: support\n    criteria:\n      subject: help\n    action:\n      label: Support\n      archive: true\n")
+	output := filepath.Join(t.TempDir(), "support.xml")
+
+	code := Run([]string{"--format", "gmail", input, output})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+}
+
+func TestRun_FormatGmailExpressionFallsBack(t *testing.T) {
+	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: subject:hello\n")
+	output := filepath.Join(t.TempDir(), "expr.xml")
+
+	code := Run([]string{"--format", "gmail", input, output})
+	if code != 0 {
+		t.Fatalf("expected exit 0 for expression-based filter in gmail mode, got %d", code)
+	}
+}

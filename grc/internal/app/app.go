@@ -10,19 +10,21 @@ import (
 	"strings"
 
 	"github.com/carlosrabelo/grc/grc/internal/generate"
+	"github.com/carlosrabelo/grc/grc/internal/gmail"
 	"github.com/carlosrabelo/grc/grc/internal/loader"
 	"github.com/carlosrabelo/grc/grc/internal/save"
 )
 
 const helpText = `Usage: grc [options] <input.yaml> [output]
 
-Generate an Atom XML feed from a YAML filter configuration.
+Generate an Atom XML feed or Gmail filter XML from a YAML configuration.
 
 Arguments:
   input.yaml            Path to the YAML configuration file
-  output                Output path for the XML file (default: <input>.xml)
+  output                Output path (default: <input>.xml for atom, <input>.gmail.xml for gmail)
 
 Options:
+  --format atom|gmail   Output format (default: atom)
   --force               Overwrite existing output file
   --verbose             Enable verbose logging
   --version             Show version information
@@ -47,6 +49,7 @@ func Run(args []string) int {
 	showHelp := fs.Bool("help", false, "")
 	force := fs.Bool("force", false, "")
 	verbose := fs.Bool("verbose", false, "")
+	format := fs.String("format", "atom", "")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -66,7 +69,7 @@ func Run(args []string) int {
 	}
 
 	input := fs.Arg(0)
-	output := resolveOutputPath(input, fs.Arg(1))
+	output := resolveOutputPath(input, fs.Arg(1), *format)
 
 	logger := createLogger(*verbose)
 
@@ -77,21 +80,37 @@ func Run(args []string) int {
 		return 1
 	}
 
-	logger("Generating Atom feed with %d filters", len(cfg.Filters))
-	feed, err := generate.GenerateFeed(cfg)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error generating feed: %v\n", err)
+	var data []byte
+
+	switch *format {
+	case "atom":
+		logger("Generating Atom feed with %d filters", len(cfg.Filters))
+		feed, err := generate.GenerateFeed(cfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating feed: %v\n", err)
+			return 1
+		}
+		data, err = xml.MarshalIndent(feed, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error marshaling XML: %v\n", err)
+			return 1
+		}
+		data = append([]byte(xml.Header), data...)
+
+	case "gmail":
+		logger("Generating Gmail filter XML with %d filters", len(cfg.Filters))
+		data, err = gmail.GenerateGmailXML(cfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating Gmail XML: %v\n", err)
+			return 1
+		}
+
+	default:
+		fmt.Fprintf(os.Stderr, "Error: unknown format %q (use atom or gmail)\n", *format)
 		return 1
 	}
 
-	data, err := xml.MarshalIndent(feed, "", "  ")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error marshaling XML: %v\n", err)
-		return 1
-	}
-	data = append([]byte(xml.Header), data...)
-
-	logger("Saving feed to %s", output)
+	logger("Saving to %s", output)
 	if err := save.SaveXML(data, output, *force); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 1
@@ -101,13 +120,17 @@ func Run(args []string) int {
 	return 0
 }
 
-func resolveOutputPath(input, output string) string {
+func resolveOutputPath(input, output, format string) string {
 	if output != "" {
 		return output
 	}
 	ext := filepath.Ext(input)
 	base := strings.TrimSuffix(input, ext)
-	return base + ".xml"
+	suffix := ".xml"
+	if format == "gmail" {
+		suffix = ".gmail.xml"
+	}
+	return base + suffix
 }
 
 func createLogger(verbose bool) func(string, ...interface{}) {
@@ -124,5 +147,5 @@ func displayVersion() {
 }
 
 func displaySuccessMessage(path string) {
-	fmt.Printf("Feed generated: %s\n", path)
+	fmt.Printf("Generated: %s\n", path)
 }

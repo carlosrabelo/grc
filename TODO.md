@@ -78,11 +78,11 @@
 
 ## Phase 15 — CLI `--format` flag
 
-- [ ] Add `--format atom|gmail` flag to CLI (default: `atom` for backward compatibility)
-- [ ] Wire `--format gmail` to `gmail.GenerateGmailXML()` pipeline
-- [ ] Update `resolveOutputPath()` to use `.gmail.xml` extension for gmail format
-- [ ] Update help text and tests
-- [ ] Create `cfg/example-gmail.yaml` with Gmail-specific criteria/action filters
+- [x] Add `--format atom|gmail` flag to CLI (default: `atom` for backward compatibility)
+- [x] Wire `--format gmail` to `gmail.GenerateGmailXML()` pipeline
+- [x] Update `resolveOutputPath()` to use `.gmail.xml` extension for gmail format
+- [x] Update help text and tests
+- [x] Create `cfg/example-gmail.yaml` with Gmail-specific criteria/action filters
 
 ## Phase 16 — Gmail filter import (reverse)
 

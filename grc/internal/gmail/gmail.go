@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/carlosrabelo/grc/grc/internal/parser"
 	"github.com/carlosrabelo/grc/grc/pkg/types"
 )
 
@@ -48,8 +49,12 @@ func GenerateGmailXML(cfg *types.FiltersConfig) ([]byte, error) {
 			Category: gmailCategory{Term: filterCategory},
 			Title:    f.Name,
 		}
-		if f.Criteria != nil {
-			entry.Properties = append(entry.Properties, criteriaProperties(f.Criteria)...)
+		criteria := f.Criteria
+		if criteria == nil && f.Expression != "" {
+			criteria = parser.Parse(f.Expression)
+		}
+		if criteria != nil {
+			entry.Properties = append(entry.Properties, criteriaProperties(criteria)...)
 		}
 		if f.Action != nil {
 			entry.Properties = append(entry.Properties, actionProperties(f.Action)...)

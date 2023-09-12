@@ -1,0 +1,45 @@
+filters:
+  - name: Newsletter
+    criteria:
+      from: newsletter@example.com
+    action:
+      label: Newsletters
+      markRead: true
+
+  - name: Support Tickets
+    criteria:
+      subject: "(help OR support OR ticket)"
+    action:
+      label: Support
+      archive: true
+
+  - name: Invoices
+    criteria:
+      subject: "(invoice OR payment OR receipt)"
+    action:
+      label: Financeiro
+      archive: true
+      markRead: true
+
+  - name: Spam
+    criteria:
+      from: spam@example.com
+    action:
+      alwaysSpam: true
+
+  - name: Important Clients
+    criteria:
+      from: "@client-domain.com"
+      hasAttachment: true
+    action:
+      label: Clients
+      star: true
+      neverSpam: true
+
+  - name: Internal Deploys
+    criteria:
+      from: "@internal.example.com"
+      subject: "(deploy OR release)"
+    action:
+      label: DevOps
+      forward: ops@example.com
