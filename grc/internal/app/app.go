@@ -11,19 +11,25 @@ import (
 
 	"github.com/carlosrabelo/grc/grc/internal/generate"
 	"github.com/carlosrabelo/grc/grc/internal/gmail"
+	"github.com/carlosrabelo/grc/grc/internal/importer"
 	"github.com/carlosrabelo/grc/grc/internal/loader"
 	"github.com/carlosrabelo/grc/grc/internal/save"
+	"gopkg.in/yaml.v3"
 )
 
 const helpText = `Usage: grc [options] <input.yaml> [output]
+       grc --import <input.xml> [output]
 
-Generate an Atom XML feed or Gmail filter XML from a YAML configuration.
+Generate an Atom XML feed or Gmail filter XML from a YAML configuration,
+or import a Gmail filter XML back to YAML.
 
 Arguments:
-  input.yaml            Path to the YAML configuration file
-  output                Output path (default: <input>.xml for atom, <input>.gmail.xml for gmail)
+  input                 YAML config file or Gmail XML file (with --import)
+  output                Output path (default: <input>.xml for atom,
+                        <input>.gmail.xml for gmail, <input>.yaml for import)
 
 Options:
+  --import              Import Gmail filter XML to YAML config
   --format atom|gmail   Output format (default: atom)
   --force               Overwrite existing output file
   --verbose             Enable verbose logging
@@ -50,6 +56,7 @@ func Run(args []string) int {
 	force := fs.Bool("force", false, "")
 	verbose := fs.Bool("verbose", false, "")
 	format := fs.String("format", "atom", "")
+	importMode := fs.Bool("import", false, "")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -69,9 +76,13 @@ func Run(args []string) int {
 	}
 
 	input := fs.Arg(0)
-	output := resolveOutputPath(input, fs.Arg(1), *format)
-
 	logger := createLogger(*verbose)
+
+	if *importMode {
+		return importPipeline(input, fs.Arg(1), *force, logger)
+	}
+
+	output := resolveOutputPath(input, fs.Arg(1), *format)
 
 	logger("Loading configuration from %s", input)
 	cfg, err := loader.LoadConfig(input)
@@ -117,6 +128,47 @@ func Run(args []string) int {
 	}
 
 	displaySuccessMessage(output)
+	return 0
+}
+
+func importPipeline(input, output string, force bool, logger func(string, ...interface{})) int {
+	logger("Parsing Gmail XML from %s", input)
+	cfg, err := importer.ImportGmailXML(input)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error importing Gmail XML: %v\n", err)
+		return 1
+	}
+
+	logger("Imported %d filters", len(cfg.Filters))
+
+	yamlData, err := yaml.Marshal(cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error marshaling YAML: %v\n", err)
+		return 1
+	}
+
+	outputPath := output
+	if outputPath == "" {
+		ext := filepath.Ext(input)
+		base := strings.TrimSuffix(input, ext)
+		outputPath = base + ".yaml"
+	}
+
+	logger("Saving to %s", outputPath)
+	if _, err := os.Stat(outputPath); err == nil && !force {
+		fmt.Fprintf(os.Stderr, "Error: file %q already exists (use --force to overwrite)\n", outputPath)
+		return 1
+	}
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating directory: %v\n", err)
+		return 1
+	}
+	if err := os.WriteFile(outputPath, yamlData, 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing file: %v\n", err)
+		return 1
+	}
+
+	displaySuccessMessage(outputPath)
 	return 0
 }
 

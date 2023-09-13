@@ -232,3 +232,169 @@ func TestRun_FormatGmailExpressionFallsBack(t *testing.T) {
 		t.Fatalf("expected exit 0 for expression-based filter in gmail mode, got %d", code)
 	}
 }
+
+func writeTestXML(t *testing.T, content string) string {
+	t.Helper()
+	path, err := testutils.CreateTempFile("", "*.xml", content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { testutils.CleanupFile(path) })
+	return path
+}
+
+func TestRun_Import(t *testing.T) {
+	xml := `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:apps="http://schemas.google.com/apps/2006">
+  <entry>
+    <category term="filter"/>
+    <title>Spam</title>
+    <apps:property name="from" value="spam@example.com"/>
+    <apps:property name="shouldArchive" value="true"/>
+  </entry>
+</feed>`
+	input := writeTestXML(t, xml)
+	output := filepath.Join(t.TempDir(), "result.yaml")
+
+	code := Run([]string{"--import", input, output})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+
+	data, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data) == 0 {
+		t.Error("expected non-empty YAML output")
+	}
+}
+
+func TestRun_ImportDefaultOutput(t *testing.T) {
+	xml := `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:apps="http://schemas.google.com/apps/2006">
+  <entry>
+    <category term="filter"/>
+    <title>Test</title>
+    <apps:property name="from" value="a@b.com"/>
+  </entry>
+</feed>`
+	input := writeTestXML(t, xml)
+	expected := input[:len(input)-4] + ".yaml"
+	t.Cleanup(func() { os.Remove(expected) })
+
+	code := Run([]string{"--import", input})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if _, err := os.Stat(expected); os.IsNotExist(err) {
+		t.Error("expected .yaml output file")
+	}
+}
+
+func TestRun_ImportInvalidPath(t *testing.T) {
+	code := Run([]string{"--import", "/nonexistent/file.xml"})
+	if code != 1 {
+		t.Fatalf("expected exit 1, got %d", code)
+	}
+}
+
+func TestRun_ImportNonFilterEntry(t *testing.T) {
+	xml := `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:apps="http://schemas.google.com/apps/2006">
+  <entry>
+    <category term="other"/>
+    <title>Not a filter</title>
+  </entry>
+</feed>`
+	input := writeTestXML(t, xml)
+	output := filepath.Join(t.TempDir(), "out.yaml")
+
+	code := Run([]string{"--import", input, output})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+
+	data, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data) == 0 {
+		t.Error("expected output")
+	}
+}
+
+func TestRun_ImportOverwriteProtected(t *testing.T) {
+	xml := `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:apps="http://schemas.google.com/apps/2006">
+  <entry>
+    <category term="filter"/>
+    <title>Test</title>
+  </entry>
+</feed>`
+	input := writeTestXML(t, xml)
+	output := filepath.Join(t.TempDir(), "prot.yaml")
+
+	code := Run([]string{"--import", input, output})
+	if code != 0 {
+		t.Fatalf("first run failed: %d", code)
+	}
+
+	code = Run([]string{"--import", input, output})
+	if code == 0 {
+		t.Fatal("expected error for overwrite without --force")
+	}
+}
+
+func TestRun_ImportForce(t *testing.T) {
+	xml := `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:apps="http://schemas.google.com/apps/2006">
+  <entry>
+    <category term="filter"/>
+    <title>Test</title>
+  </entry>
+</feed>`
+	input := writeTestXML(t, xml)
+	output := filepath.Join(t.TempDir(), "force.yaml")
+
+	code := Run([]string{"--import", input, output})
+	if code != 0 {
+		t.Fatalf("first run failed: %d", code)
+	}
+
+	code = Run([]string{"--import", "--force", input, output})
+	if code != 0 {
+		t.Fatalf("expected --force to succeed, got %d", code)
+	}
+}
+
+func TestRun_ImportRoundtrip(t *testing.T) {
+	xml := `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:apps="http://schemas.google.com/apps/2006">
+  <entry>
+    <category term="filter"/>
+    <title>Support</title>
+    <apps:property name="subject" value="help"/>
+    <apps:property name="shouldMarkAsRead" value="true"/>
+    <apps:property name="label" value="Support"/>
+  </entry>
+</feed>`
+	input := writeTestXML(t, xml)
+	yamlPath := filepath.Join(t.TempDir(), "roundtrip.yaml")
+
+	code := Run([]string{"--import", input, yamlPath})
+	if code != 0 {
+		t.Fatalf("import failed: %d", code)
+	}
+
+	gmailPath := filepath.Join(t.TempDir(), "roundtrip.gmail.xml")
+	code = Run([]string{"--format", "gmail", yamlPath, gmailPath})
+	if code != 0 {
+		t.Fatalf("generate failed: %d", code)
+	}
+
+	code = Run([]string{"--import", "--force", gmailPath, yamlPath})
+	if code != 0 {
+		t.Fatalf("re-import failed: %d", code)
+	}
+}
