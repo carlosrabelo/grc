@@ -43,3 +43,78 @@ filters:
     action:
       label: DevOps
       forward: ops@example.com
+
+  - name: Delete Promotions
+    criteria:
+      subject: "(discount OR promo OR sale)"
+      category: promotions
+    action:
+      delete: true
+
+  - name: Social Notifications
+    criteria:
+      category: social
+      olderThan: 30d
+    action:
+      moveToTrash: true
+
+  - name: Unread Priority
+    criteria:
+      is: unread
+      from: "@important-corp.com"
+    action:
+      label: Priority
+      star: true
+
+  - name: Receipts Archive
+    criteria:
+      hasTheWord: "(receipt OR purchase)"
+      subject: "your order"
+    action:
+      smartLabel: receipts
+      archive: true
+
+  - name: Large Attachments
+    criteria:
+      hasAttachment: true
+      larger: 10M
+    action:
+      label: Large Files
+      markRead: true
+
+  - name: Periodic Cleanup
+    criteria:
+      to: archive@example.com
+      before: 2024/01/01
+    action:
+      delete: true
+
+  - name: Snoozed FollowUp
+    criteria:
+      is: snoozed
+      newerThan: 7d
+    action:
+      label: Follow Up
+
+  - name: Team Delivered
+    criteria:
+      deliveredto: team@example.com
+      cc: manager@example.com
+    action:
+      label: Team Delivered
+
+  - name: Billing Support
+    criteria:
+      to: billing@example.com
+      bcc: finance@example.com
+    action:
+      label: Billing
+      forward: support@example.com
+
+  - name: Mailing List Filter
+    criteria:
+      list: users@list.example.com
+      in: inbox
+    action:
+      label: Mailing Lists
+      neverSpam: true
