@@ -54,7 +54,7 @@ filters:
   - name: Social Notifications
     criteria:
       category: social
-      olderThan: 30d
+      older_than: 30d
     action:
       moveToTrash: true
 
@@ -92,7 +92,7 @@ filters:
   - name: Snoozed FollowUp
     criteria:
       is: snoozed
-      newerThan: 7d
+      newer_than: 7d
     action:
       label: Follow Up
 
