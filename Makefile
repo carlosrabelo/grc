@@ -2,7 +2,7 @@ MAKEFLAGS += --no-print-directory
 
 .DEFAULT_GOAL := help
 
-.PHONY: build clean fmt help lint quality test vet
+.PHONY: build build-static clean fmt help install lint quality test vet
 
 BINARY_NAME := grc
 VERSION    := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -18,6 +18,12 @@ help: ## Show available targets
 
 build: ## Build binary
 	@./.make/build.sh
+
+build-static: ## Build fully static binary (CGO_ENABLED=0, netgo)
+	@./.make/build-static.sh
+
+install: ## Build and install to /usr/local/bin (root) or ~/.local/bin (user)
+	@./.make/install.sh
 
 test: ## Run all tests
 	@./.make/test.sh
