@@ -1,6 +1,12 @@
-# GRC - Gmail Rule Converter
+# GRC — Gmail Rule Converter Guide
 
-Generate Atom XML feeds from YAML filter configurations.
+## Overview
+
+GRC converts YAML filter definitions into:
+
+- **Atom XML** feeds (for RSS readers, dashboards)
+- **Gmail import XML** (compatible with Google Workspace / Gmail filters import)
+- **YAML config** from Google Takeout Gmail filter XML (`--import`)
 
 ## Installation
 
@@ -11,37 +17,60 @@ make build
 sudo cp bin/grc /usr/local/bin/
 ```
 
-Or use `go install`:
+Via `go install`:
 
 ```bash
 go install github.com/carlosrabelo/grc/grc/cmd/grc@latest
 ```
 
-## Usage
+## Command-line Interface
 
-```bash
-grc [options] <input.yaml> [output]
+```
+grc [options] <input> [output]
+grc --import <input.xml> [output]
 ```
 
 ### Arguments
 
-| Argument    | Description                                                  |
-|-------------|--------------------------------------------------------------|
-| `input.yaml` | Path to the YAML configuration file (required)              |
-| `output`     | Output path for the XML file (default: `<input>.xml`)       |
+| Argument | Description                                                      |
+|----------|------------------------------------------------------------------|
+| `input`  | YAML config file or Gmail XML (when using `--import`)            |
+| `output` | Output path (default depends on mode — see table below)          |
+
+### Default output paths
+
+| Mode                     | Default extension  | Example                          |
+|--------------------------|--------------------|----------------------------------|
+| `--format atom` (default) | `.xml`            | `cfg/example.yaml` → `example.xml` |
+| `--format gmail`          | `.gmail.xml`      | `cfg/example.yaml` → `example.gmail.xml` |
+| `--import`                | `.yaml`           | `filters.xml` → `filters.yaml`     |
 
 ### Options
 
-| Option       | Description                            |
-|--------------|----------------------------------------|
-| `--force`    | Overwrite existing output file         |
-| `--verbose`  | Enable detailed logging                |
-| `--version`  | Show version information               |
-| `--help`     | Show this help message                 |
+| Flag            | Description                                   |
+|-----------------|-----------------------------------------------|
+| `--format atom`   | Atom XML output (default)                   |
+| `--format gmail`  | Gmail-compatible import XML                 |
+| `--import`      | Import Gmail filter XML to YAML               |
+| `--force`       | Overwrite existing output file                |
+| `--verbose`     | Enable detailed logging                       |
+| `--version`     | Show version and build time                   |
+| `--help`        | Show help message                             |
+
+### Exit codes
+
+| Code | Meaning     |
+|------|-------------|
+| 0    | Success     |
+| 1    | Error       |
 
 ## YAML Configuration
 
-### Structure
+Two configuration formats are supported:
+
+### 1. Atom format (expression-based)
+
+Uses Gmail search-like expressions and Atom-specific metadata.
 
 ```yaml
 defaults:
@@ -49,68 +78,192 @@ defaults:
     name: Default Author
     email: author@example.com
   category:
-    term: default
-    label: Default Category
+    term: email
+    scheme: http://example.com/categories
+    label: Email Category
 
 filters:
-  - name: Filter Name
-    expression: subject:keyword
+  - name: Newsletter
+    expression: subject:(newsletter OR weekly OR digest)
     category:
-      term: category-slug
-      label: Category Label
+      term: newsletter
+      label: Newsletters
     author:
-      name: Author Name
-      email: author@example.com
+      name: Newsletter Bot
+      email: newsletter@example.com
     properties:
-      - name: property-name
-        value: property-value
+      - name: priority
+        value: high
 ```
 
-### Fields
+#### Atom fields
 
-| Field        | Type   | Required | Description                          |
-|--------------|--------|----------|--------------------------------------|
-| `name`       | string | yes      | Filter name (becomes feed entry title) |
-| `expression` | string | yes      | Search expression                    |
-| `category`   | object | no       | Atom category (term, scheme, label)  |
-| `author`     | object | no       | Atom author (name, email, uri)       |
-| `properties` | array  | no       | Key-value pairs added to summary     |
+| Field        | Type    | Required | Description                           |
+|--------------|---------|----------|---------------------------------------|
+| `name`       | string  | yes      | Filter name (becomes entry title)     |
+| `expression` | string  | yes*     | Gmail search expression               |
+| `criteria`   | object  | yes*     | Structured Gmail criteria (alt to expression) |
+| `action`     | object  | no       | Gmail actions to apply                |
+| `category`   | object  | no       | Atom category (term, scheme, label)   |
+| `author`     | object  | no       | Atom author (name, email, uri)        |
+| `properties` | array   | no       | Key-value pairs in entry summary      |
 
-### Defaults
+\* At least one of `expression` or `criteria` is required.
 
-The `defaults` block sets fallback values for `author` and `category` applied to any filter that does not define them explicitly.
+### 2. Gmail format (criteria + action)
 
-## Examples
-
-### Minimal
+Uses structured fields that map directly to Gmail filter properties.
 
 ```yaml
 filters:
   - name: Newsletter
-    expression: subject:newsletter
+    criteria:
+      from: newsletter@example.com
+    action:
+      label: Newsletters
+      markRead: true
 ```
 
-### Full
+#### Criteria fields
 
-See `cfg/example.yaml` for a complete example with newsletters, support tickets, internal notices, client communications, financial documents, and spam filters.
+| Field          | Type    | Description                          |
+|----------------|---------|--------------------------------------|
+| `from`         | string  | Sender email                         |
+| `to`           | string  | Recipient email                      |
+| `subject`      | string  | Subject line                         |
+| `hasTheWord`   | string  | Free-text search terms               |
+| `hasAttachment` | bool   | Has attachment                       |
+| `is`           | string  | `unread`, `starred`, `snoozed`, `important`, `chat` |
+| `in`           | string  | `inbox`, `trash`, `spam`, `anywhere`, `sent`, `drafts` |
+| `cc`           | string  | CC recipient                         |
+| `bcc`          | string  | BCC recipient                        |
+| `deliveredto`  | string  | Delivered-to address                 |
+| `list`         | string  | Mailing list address                 |
+| `filename`     | string  | Attachment filename                  |
+| `after`        | string  | Date after (e.g., `2024/01/01`)      |
+| `before`       | string  | Date before                          |
+| `older_than`   | string  | Relative age (e.g., `30d`, `2y`)     |
+| `newer_than`   | string  | Relative age (e.g., `7d`)            |
+| `size`         | string  | Exact size (e.g., `10M`)             |
+| `larger`       | string  | Larger than (e.g., `5M`)             |
+| `smaller`      | string  | Smaller than (e.g., `1M`)            |
+| `label`        | string  | Has label                            |
+| `category`     | string  | Gmail category (`primary`, `social`, `promotions`, `updates`, `forums`) |
 
-## Building from Source
+#### Action fields
+
+| Field         | Type    | Description                      |
+|---------------|---------|----------------------------------|
+| `archive`     | bool    | Skip inbox                       |
+| `markRead`    | bool    | Mark as read                     |
+| `star`        | bool    | Star the message                 |
+| `delete`      | bool    | Send to trash                    |
+| `neverSpam`   | bool    | Never send to spam               |
+| `alwaysSpam`  | bool    | Always mark as spam              |
+| `forward`     | string  | Forward to email address         |
+| `label`       | string  | Apply label                      |
+| `smartLabel`  | string  | Apply smart label category       |
+| `moveToTrash` | bool    | Move to trash                    |
+
+## Usage examples
+
+### Generate Atom feed
 
 ```bash
-make build        # Compile binary to bin/
-make test         # Run all tests
-make quality      # Format, vet, and test
-make clean        # Remove build artifacts
+grc cfg/example.yaml
+# Produces example.xml
 ```
 
-Use `make build` or build directly:
+### Generate Gmail import XML
 
 ```bash
-go build -o bin/grc ./grc/cmd/grc
+grc --format gmail cfg/example-gmail.yaml
+# Produces example.gmail.xml
 ```
 
-Embed version info:
+### Import Gmail filters from Google Takeout
 
 ```bash
-go build -ldflags="-X github.com/carlosrabelo/grc/grc/internal/app.Version=$(git describe --tags --always --dirty) -X github.com/carlosrabelo/grc/grc/internal/app.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o bin/grc ./grc/cmd/grc
+grc --import takeout-filters.xml
+# Produces takeout-filters.yaml
+```
+
+### Force overwrite
+
+```bash
+grc --format gmail --force cfg/example-gmail.yaml output.gmail.xml
+```
+
+### Verbose mode
+
+```bash
+grc --verbose --format gmail cfg/example-gmail.yaml
+```
+
+### Full round-trip
+
+```bash
+# YAML → Gmail XML
+grc --format gmail cfg/example-gmail.yaml filters.gmail.xml
+
+# Gmail XML → YAML
+grc --import filters.gmail.yaml
+```
+
+## Expression parser
+
+When using `expression` (Atom format), GRC parses Gmail search syntax:
+
+```
+from:newsletter@example.com subject:(weekly OR digest) has:attachment
+```
+
+Supported operators:
+
+| Operator            | Maps to                      |
+|---------------------|------------------------------|
+| `from:`             | Criteria.From                |
+| `to:`               | Criteria.To                  |
+| `subject:`          | Criteria.Subject             |
+| `has:`              | `has:attachment` → HasAttachment=true |
+| `is:`               | Criteria.Is                  |
+| `in:`               | Criteria.In                  |
+| `cc:`               | Criteria.Cc                  |
+| `bcc:`              | Criteria.Bcc                 |
+| `deliveredto:`      | Criteria.DeliveredTo         |
+| `list:`             | Criteria.List                |
+| `filename:`         | Criteria.Filename            |
+| `after:`            | Criteria.After               |
+| `before:`           | Criteria.Before              |
+| `older_than:`       | Criteria.OlderThan           |
+| `newer_than:`       | Criteria.NewerThan           |
+| `size:`             | Criteria.Size                |
+| `larger:`           | Criteria.Larger              |
+| `smaller:`          | Criteria.Smaller             |
+| `label:`            | Criteria.Label               |
+| `category:`         | Criteria.Category            |
+| Unrecognized tokens | Criteria.HasTheWord          |
+
+## Search query builder
+
+GRC can build `mail.google.com` search URLs from criteria:
+
+- `query.BuildSearchString(criteria)` → `from:user@example.com subject:hello`
+- `query.BuildSearchURL(criteria)` → `https://mail.google.com/mail/u/0/#search/from%3Auser%40example.com%20subject%3Ahello`
+
+## Examples
+
+- `cfg/example.yaml` — Atom-oriented config with 6 expression-based filters
+- `cfg/example-gmail.yaml` — Gmail-oriented config with 16 filters covering all criteria and action types
+
+## Development
+
+```bash
+make build        # Compile to bin/grc
+make test         # Run all tests (12 packages)
+make quality      # Format, vet, lint, test
+make clean        # Remove bin/ and .make/ stamps
+
+# Lint (requires golangci-lint)
+make lint
 ```
