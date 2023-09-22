@@ -74,27 +74,27 @@ func TestGenerateGmailXML_AllCriteria(t *testing.T) {
 			{
 				Name: "All Criteria",
 				Criteria: &types.GmailCriteria{
-					From:         "from@example.com",
-					To:           "to@example.com",
-					Subject:      "subject text",
-					HasTheWord:   "important",
+					From:          "from@example.com",
+					To:            "to@example.com",
+					Subject:       "subject text",
+					HasTheWord:    "important",
 					HasAttachment: boolPtr(true),
-					Is:           "unread",
-					In:           "inbox",
-					Cc:           "cc@example.com",
-					Bcc:          "bcc@example.com",
-					DeliveredTo:  "delivered@example.com",
-					List:         "list@example.com",
-					Filename:     "report.pdf",
-					After:        "2024/01/01",
-					Before:       "2024/06/01",
-					OlderThan:    "30d",
-					NewerThan:    "7d",
-					Size:         "10M",
-					Larger:       "5M",
-					Smaller:      "1M",
-					Label:        "Important",
-					Category:     "updates",
+					Is:            "unread",
+					In:            "inbox",
+					Cc:            "cc@example.com",
+					Bcc:           "bcc@example.com",
+					DeliveredTo:   "delivered@example.com",
+					List:          "list@example.com",
+					Filename:      "report.pdf",
+					After:         "2024/01/01",
+					Before:        "2024/06/01",
+					OlderThan:     "30d",
+					NewerThan:     "7d",
+					Size:          "10M",
+					Larger:        "5M",
+					Smaller:       "1M",
+					Label:         "Important",
+					Category:      "updates",
 				},
 			},
 		},
@@ -145,16 +145,16 @@ func TestGenerateGmailXML_AllActions(t *testing.T) {
 					From: "test@example.com",
 				},
 				Action: &types.GmailAction{
-					Archive:    boolPtr(true),
-					MarkRead:   boolPtr(true),
-					Star:       boolPtr(false),
-					Delete:     boolPtr(false),
-					NeverSpam:  boolPtr(true),
-					AlwaysSpam: boolPtr(false),
-					Forward:    "backup@example.com",
-					Label:      "Auto-Label",
-					SmartLabel: "Smart Label",
-					Category:   "updates",
+					Archive:     boolPtr(true),
+					MarkRead:    boolPtr(true),
+					Star:        boolPtr(false),
+					Delete:      boolPtr(false),
+					NeverSpam:   boolPtr(true),
+					AlwaysSpam:  boolPtr(false),
+					Forward:     "backup@example.com",
+					Label:       "Auto-Label",
+					SmartLabel:  "Smart Label",
+					Category:    "updates",
 					MoveToTrash: boolPtr(true),
 				},
 			},
@@ -191,14 +191,14 @@ func TestGenerateGmailXML_MultipleFilters(t *testing.T) {
 	cfg := &types.FiltersConfig{
 		Filters: []types.Filter{
 			{
-				Name: "Filter A",
+				Name:     "Filter A",
 				Criteria: &types.GmailCriteria{From: "a@example.com"},
-				Action:  &types.GmailAction{Archive: boolPtr(true)},
+				Action:   &types.GmailAction{Archive: boolPtr(true)},
 			},
 			{
-				Name: "Filter B",
+				Name:     "Filter B",
 				Criteria: &types.GmailCriteria{Subject: "newsletter"},
-				Action:  &types.GmailAction{Label: "Newsletters"},
+				Action:   &types.GmailAction{Label: "Newsletters"},
 			},
 		},
 	}
@@ -281,7 +281,7 @@ func TestGenerateGmailXML_Header(t *testing.T) {
 	cfg := &types.FiltersConfig{
 		Filters: []types.Filter{
 			{
-				Name: "Test",
+				Name:     "Test",
 				Criteria: &types.GmailCriteria{From: "x@y.com"},
 			},
 		},
@@ -301,7 +301,7 @@ func TestGenerateGmailXML_XMLNamespace(t *testing.T) {
 	cfg := &types.FiltersConfig{
 		Filters: []types.Filter{
 			{
-				Name: "Test",
+				Name:     "Test",
 				Criteria: &types.GmailCriteria{From: "x@y.com"},
 			},
 		},
@@ -325,7 +325,7 @@ func TestGenerateGmailXML_FilterNameAsTitle(t *testing.T) {
 	cfg := &types.FiltersConfig{
 		Filters: []types.Filter{
 			{
-				Name: "My Custom Filter",
+				Name:     "My Custom Filter",
 				Criteria: &types.GmailCriteria{From: "x@y.com"},
 			},
 		},
@@ -345,7 +345,7 @@ func TestGenerateGmailXML_CategoryTerm(t *testing.T) {
 	cfg := &types.FiltersConfig{
 		Filters: []types.Filter{
 			{
-				Name: "Test",
+				Name:     "Test",
 				Criteria: &types.GmailCriteria{From: "x@y.com"},
 			},
 		},

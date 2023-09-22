@@ -231,7 +231,7 @@ func TestEndToEnd_CLIRoundtrip(t *testing.T) {
 	yamlPath := writeTestYAML(t, yaml)
 	gmailPath := filepath.Join(t.TempDir(), "out.gmail.xml")
 
-	code := app.Run([]string{"--format", "gmail", yamlPath, gmailPath})
+	code := app.Run([]string{"gmail", yamlPath, gmailPath})
 	if code != 0 {
 		t.Fatalf("gmail generation failed: %d", code)
 	}
@@ -240,7 +240,7 @@ func TestEndToEnd_CLIRoundtrip(t *testing.T) {
 	}
 
 	importPath := filepath.Join(t.TempDir(), "reimport.yaml")
-	code = app.Run([]string{"--import", gmailPath, importPath})
+	code = app.Run([]string{"import", gmailPath, importPath})
 	if code != 0 {
 		t.Fatalf("import failed: %d", code)
 	}
@@ -349,7 +349,7 @@ func TestEndToEnd_CLIFormatAtom(t *testing.T) {
 	yamlPath := writeTestYAML(t, yaml)
 	output := filepath.Join(t.TempDir(), "atom.xml")
 
-	code := app.Run([]string{"--format", "atom", yamlPath, output})
+	code := app.Run([]string{"atom", yamlPath, output})
 	if code != 0 {
 		t.Fatalf("atom generation failed: %d", code)
 	}
@@ -371,17 +371,16 @@ func TestEndToEnd_CLIEmptyFilters(t *testing.T) {
 	yamlPath := writeTestYAML(t, yaml)
 	output := filepath.Join(t.TempDir(), "empty.gmail.xml")
 
-	code := app.Run([]string{"--format", "gmail", yamlPath, output})
+	code := app.Run([]string{"gmail", yamlPath, output})
 	if code != 0 {
 		t.Fatalf("expected exit 0 for empty filters, got %d", code)
 	}
 }
 
-func TestEndToEnd_CLIInvalidFormat(t *testing.T) {
-	yamlPath := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n")
-	code := app.Run([]string{"--format", "bogus", yamlPath})
-	if code != 1 {
-		t.Fatalf("expected exit 1 for invalid format, got %d", code)
+func TestEndToEnd_CLIRejectsBadSubcommand(t *testing.T) {
+	code := app.Run([]string{"bogus"})
+	if code != 2 {
+		t.Fatalf("expected exit 2 for unknown subcommand, got %d", code)
 	}
 }
 

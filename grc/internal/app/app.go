@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,172 +18,327 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const helpText = `Usage: grc [options] <input.yaml> [output]
-       grc --import <input.xml> [output]
-
-Generate an Atom XML feed or Gmail filter XML from a YAML configuration,
-or import a Gmail filter XML back to YAML.
-
-Arguments:
-  input                 YAML config file or Gmail XML file (with --import)
-  output                Output path (default: <input>.xml for atom,
-                        <input>.gmail.xml for gmail, <input>.yaml for import)
-
-Options:
-  --import              Import Gmail filter XML to YAML config
-  --format atom|gmail   Output format (default: atom)
-  --force               Overwrite existing output file
-  --verbose             Enable verbose logging
-  --version             Show version information
-  --help                Show this help message
-`
+const (
+	exitOK    = 0
+	exitError = 1
+	exitUsage = 2
+)
 
 var (
 	Version   = "dev"
 	BuildTime = "unknown"
 )
 
+const rootHelp = `grc — Gmail Rule Converter
+
+Usage:
+  grc <command> [flags] <input> [output]
+
+Commands:
+  atom      Generate an Atom XML feed from a YAML config
+  gmail     Generate Gmail import XML from a YAML config
+  import    Import a Gmail filter XML (Google Takeout) back to YAML
+  help      Show help (use "grc help <command>" for details)
+  version   Show version information
+
+Common flags (available on atom, gmail, import):
+  --output PATH   Explicit output path (overrides the positional argument)
+  --force         Overwrite an existing output file
+  --verbose       Enable verbose logging
+  -h, --help      Show help for the current command
+
+Default output paths:
+  atom      <input>.xml          (cfg/x.yaml -> cfg/x.xml)
+  gmail     <input>.gmail.xml    (cfg/x.yaml -> cfg/x.gmail.xml)
+  import    <input>.yaml         (takeout.xml -> takeout.yaml)
+
+Examples:
+  grc atom cfg/example.yaml
+  grc gmail cfg/example-gmail.yaml -o filters.xml
+  grc import takeout.xml converted.yaml
+
+Run "grc help <command>" for command-specific help.
+`
+
+const atomHelp = `Usage: grc atom [flags] <input.yaml> [output]
+
+Generate an Atom XML feed from a YAML configuration. The feed contains one
+entry per filter, with optional author, category and properties.
+
+Arguments:
+  input     YAML configuration file (.yaml or .yml). Required.
+  output    Output path. Default: <input>.xml.
+
+Flags:
+  --output PATH   Explicit output path (overrides the positional output)
+  --force         Overwrite an existing output file
+  --verbose       Enable verbose logging
+  -h, --help      Show this help message
+
+Examples:
+  grc atom cfg/example.yaml
+  grc atom cfg/example.yaml --output /tmp/feed.xml --force
+`
+
+const gmailHelp = `Usage: grc gmail [flags] <input.yaml> [output]
+
+Generate Gmail-compatible import XML from a YAML configuration. The output
+can be imported via Gmail Settings > Filters > Import.
+
+Arguments:
+  input     YAML configuration file (.yaml or .yml). Required.
+  output    Output path. Default: <input>.gmail.xml.
+
+Flags:
+  --output PATH   Explicit output path (overrides the positional output)
+  --force         Overwrite an existing output file
+  --verbose       Enable verbose logging
+  -h, --help      Show this help message
+
+Examples:
+  grc gmail cfg/example-gmail.yaml
+  grc gmail cfg/example-gmail.yaml -o filters.xml --force
+`
+
+const importHelp = `Usage: grc import [flags] <input.xml> [output]
+
+Convert a Gmail filter XML export (Google Takeout) back into a YAML config
+that can be re-edited and re-exported with "grc atom" or "grc gmail".
+
+Arguments:
+  input     Gmail filter XML file (.xml). Required.
+  output    Output YAML path. Default: <input>.yaml.
+
+Flags:
+  --output PATH   Explicit output path (overrides the positional output)
+  --force         Overwrite an existing output file
+  --verbose       Enable verbose logging
+  -h, --help      Show this help message
+
+Examples:
+  grc import takeout.xml
+  grc import takeout.xml --output filters.yaml
+`
+
+const versionHelp = `Usage: grc version
+
+Print the grc version and build metadata.
+`
+
+type options struct {
+	output  string
+	force   bool
+	verbose bool
+}
+
+// Run is the CLI entry point. It returns a process exit code.
 func Run(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprint(os.Stderr, helpText)
-		return 1
+		fmt.Print(rootHelp)
+		return exitOK
 	}
 
-	fs := flag.NewFlagSet("grc", flag.ContinueOnError)
-	fs.Usage = func() { fmt.Fprint(os.Stderr, helpText) }
+	cmd := args[0]
+	rest := args[1:]
 
-	showVersion := fs.Bool("version", false, "")
-	showHelp := fs.Bool("help", false, "")
-	force := fs.Bool("force", false, "")
-	verbose := fs.Bool("verbose", false, "")
-	format := fs.String("format", "atom", "")
-	importMode := fs.Bool("import", false, "")
+	switch cmd {
+	case "help":
+		return runHelp(rest)
+	case "version", "--version", "-v":
+		return runVersion(rest)
+	case "-h", "--help":
+		fmt.Print(rootHelp)
+		return exitOK
+	case "atom":
+		return runGenerate(rest, "atom", atomHelp)
+	case "gmail":
+		return runGenerate(rest, "gmail", gmailHelp)
+	case "import":
+		return runImport(rest)
+	default:
+		fmt.Fprintf(os.Stderr, "Error: unknown command %q\n\n", cmd)
+		fmt.Fprint(os.Stderr, rootHelp)
+		return exitUsage
+	}
+}
 
-	if err := fs.Parse(args); err != nil {
-		return 1
+func runHelp(args []string) int {
+	if len(args) == 0 {
+		fmt.Print(rootHelp)
+		return exitOK
+	}
+	switch args[0] {
+	case "atom":
+		fmt.Print(atomHelp)
+		return exitOK
+	case "gmail":
+		fmt.Print(gmailHelp)
+		return exitOK
+	case "import":
+		fmt.Print(importHelp)
+		return exitOK
+	case "version":
+		fmt.Print(versionHelp)
+		return exitOK
+	case "help":
+		fmt.Print(rootHelp)
+		return exitOK
+	default:
+		fmt.Fprintf(os.Stderr, "Error: unknown command %q\n\n", args[0])
+		fmt.Fprint(os.Stderr, rootHelp)
+		return exitUsage
+	}
+}
+
+func runVersion(args []string) int {
+	if hasHelpFlag(args) {
+		fmt.Print(versionHelp)
+		return exitOK
+	}
+	fmt.Printf("grc version %s (built %s)\n", Version, BuildTime)
+	return exitOK
+}
+func runGenerate(args []string, mode, help string) int {
+	opts, positional, code := parseFlags(mode, args, help)
+	if opts == nil {
+		return code
+	}
+	if len(positional) == 0 {
+		fmt.Fprintln(os.Stderr, "Error: input file required")
+		fmt.Fprint(os.Stderr, help)
+		return exitUsage
 	}
 
-	if *showVersion {
-		displayVersion()
-		return 0
-	}
-	if *showHelp {
-		fmt.Print(helpText)
-		return 0
-	}
-	if fs.NArg() == 0 {
-		fmt.Fprint(os.Stderr, helpText)
-		return 1
-	}
-
-	input := fs.Arg(0)
-	logger := createLogger(*verbose)
-
-	if *importMode {
-		return importPipeline(input, fs.Arg(1), *force, logger)
-	}
-
-	output := resolveOutputPath(input, fs.Arg(1), *format)
+	input := positional[0]
+	output := resolveOutput(input, positionalAt(positional, 1), opts.output, mode)
+	logger := createLogger(opts.verbose)
 
 	logger("Loading configuration from %s", input)
 	cfg, err := loader.LoadConfig(input)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		return 1
+		return fail("Error: %v", err)
 	}
 
 	var data []byte
-
-	switch *format {
+	switch mode {
 	case "atom":
 		logger("Generating Atom feed with %d filters", len(cfg.Filters))
-		feed, err := generate.GenerateFeed(cfg)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error generating feed: %v\n", err)
-			return 1
+		feed, ferr := generate.GenerateFeed(cfg)
+		if ferr != nil {
+			return fail("Error generating feed: %v", ferr)
 		}
 		data, err = xml.MarshalIndent(feed, "", "  ")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error marshaling XML: %v\n", err)
-			return 1
+			return fail("Error marshaling XML: %v", err)
 		}
 		data = append([]byte(xml.Header), data...)
-
 	case "gmail":
 		logger("Generating Gmail filter XML with %d filters", len(cfg.Filters))
 		data, err = gmail.GenerateGmailXML(cfg)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error generating Gmail XML: %v\n", err)
-			return 1
+			return fail("Error generating Gmail XML: %v", err)
 		}
-
-	default:
-		fmt.Fprintf(os.Stderr, "Error: unknown format %q (use atom or gmail)\n", *format)
-		return 1
 	}
 
 	logger("Saving to %s", output)
-	if err := save.SaveXML(data, output, *force); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		return 1
+	if _, err := save.SaveFile(data, output, ".xml", opts.force); err != nil {
+		return fail("Error: %v", err)
 	}
 
-	displaySuccessMessage(output)
-	return 0
+	fmt.Printf("Generated: %s\n", output)
+	return exitOK
 }
 
-func importPipeline(input, output string, force bool, logger func(string, ...interface{})) int {
+func runImport(args []string) int {
+	opts, positional, code := parseFlags("import", args, importHelp)
+	if opts == nil {
+		return code
+	}
+	if len(positional) == 0 {
+		fmt.Fprintln(os.Stderr, "Error: input file required")
+		fmt.Fprint(os.Stderr, importHelp)
+		return exitUsage
+	}
+
+	input := positional[0]
+	if !strings.EqualFold(filepath.Ext(input), ".xml") {
+		fmt.Fprintln(os.Stderr, "Error: import requires a .xml input file")
+		fmt.Fprint(os.Stderr, importHelp)
+		return exitUsage
+	}
+
+	output := resolveOutput(input, positionalAt(positional, 1), opts.output, "import")
+	logger := createLogger(opts.verbose)
+
 	logger("Parsing Gmail XML from %s", input)
 	cfg, err := importer.ImportGmailXML(input)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error importing Gmail XML: %v\n", err)
-		return 1
+		return fail("Error importing Gmail XML: %v", err)
 	}
-
 	logger("Imported %d filters", len(cfg.Filters))
 
 	yamlData, err := yaml.Marshal(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error marshaling YAML: %v\n", err)
-		return 1
+		return fail("Error marshaling YAML: %v", err)
 	}
 
-	outputPath := output
-	if outputPath == "" {
-		ext := filepath.Ext(input)
-		base := strings.TrimSuffix(input, ext)
-		outputPath = base + ".yaml"
+	logger("Saving to %s", output)
+	written, err := save.SaveYAML(yamlData, output, opts.force)
+	if err != nil {
+		return fail("Error: %v", err)
 	}
 
-	logger("Saving to %s", outputPath)
-	if _, err := os.Stat(outputPath); err == nil && !force {
-		fmt.Fprintf(os.Stderr, "Error: file %q already exists (use --force to overwrite)\n", outputPath)
-		return 1
-	}
-	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating directory: %v\n", err)
-		return 1
-	}
-	if err := os.WriteFile(outputPath, yamlData, 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing file: %v\n", err)
-		return 1
-	}
-
-	displaySuccessMessage(outputPath)
-	return 0
+	fmt.Printf("Generated: %s\n", written)
+	return exitOK
 }
 
-func resolveOutputPath(input, output, format string) string {
-	if output != "" {
-		return output
+// parseFlags registers the common flag set shared by atom/gmail/import.
+// Returns (nil, nil, code) when --help was shown or a parse error occurred;
+// the caller is expected to surface `code` and skip further work.
+func parseFlags(name string, args []string, help string) (*options, []string, int) {
+	fs := flag.NewFlagSet(name, flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	fs.Usage = func() {}
+
+	var opts options
+	var showHelp bool
+	fs.StringVar(&opts.output, "output", "", "Explicit output path")
+	fs.StringVar(&opts.output, "o", "", "Shortcut for --output")
+	fs.BoolVar(&opts.force, "force", false, "Overwrite existing output file")
+	fs.BoolVar(&opts.verbose, "verbose", false, "Enable verbose logging")
+	fs.BoolVar(&showHelp, "help", false, "Show help for this command")
+	fs.BoolVar(&showHelp, "h", false, "Shortcut for --help")
+
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		fmt.Fprint(os.Stderr, help)
+		return nil, nil, exitUsage
 	}
-	ext := filepath.Ext(input)
-	base := strings.TrimSuffix(input, ext)
-	suffix := ".xml"
-	if format == "gmail" {
-		suffix = ".gmail.xml"
+	if showHelp {
+		fmt.Print(help)
+		return nil, nil, exitOK
 	}
-	return base + suffix
+	return &opts, fs.Args(), exitOK
+}
+
+// resolveOutput picks the final output path. Explicit --output wins; then a
+// positional output argument; otherwise a sensible default derived from input.
+func resolveOutput(input, positionalOutput, flagOutput, mode string) string {
+	if flagOutput != "" {
+		return flagOutput
+	}
+	if positionalOutput != "" {
+		return positionalOutput
+	}
+	base := strings.TrimSuffix(input, filepath.Ext(input))
+	switch mode {
+	case "gmail":
+		return base + ".gmail.xml"
+	case "import":
+		return base + ".yaml"
+	default:
+		return base + ".xml"
+	}
 }
 
 func createLogger(verbose bool) func(string, ...interface{}) {
@@ -194,10 +350,23 @@ func createLogger(verbose bool) func(string, ...interface{}) {
 	}
 }
 
-func displayVersion() {
-	fmt.Printf("grc version %s (built %s)\n", Version, BuildTime)
+func hasHelpFlag(args []string) bool {
+	for _, a := range args {
+		if a == "-h" || a == "--help" {
+			return true
+		}
+	}
+	return false
 }
 
-func displaySuccessMessage(path string) {
-	fmt.Printf("Generated: %s\n", path)
+func positionalAt(args []string, i int) string {
+	if i < 0 || i >= len(args) {
+		return ""
+	}
+	return args[i]
+}
+
+func fail(format string, args ...interface{}) int {
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
+	return exitError
 }

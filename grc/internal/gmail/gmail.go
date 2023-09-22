@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	atomNS  = "http://www.w3.org/2005/Atom"
-	appsNS  = "http://schemas.google.com/apps/2006"
+	atomNS         = "http://www.w3.org/2005/Atom"
+	appsNS         = "http://schemas.google.com/apps/2006"
 	filterCategory = "filter"
 )
 

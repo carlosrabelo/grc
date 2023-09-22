@@ -113,25 +113,63 @@ func TestImportGmailXML_AllCriteria(t *testing.T) {
 	if c == nil {
 		t.Fatal("expected criteria")
 	}
-	if c.From != "from@example.com" { t.Errorf("From: got %q", c.From) }
-	if c.To != "to@example.com" { t.Errorf("To: got %q", c.To) }
-	if c.Subject != "subject text" { t.Errorf("Subject: got %q", c.Subject) }
-	if c.HasTheWord != "important" { t.Errorf("HasTheWord: got %q", c.HasTheWord) }
-	if c.HasAttachment == nil || !*c.HasAttachment { t.Error("HasAttachment expected true") }
-	if c.Is != "unread" { t.Errorf("Is: got %q", c.Is) }
-	if c.In != "inbox" { t.Errorf("In: got %q", c.In) }
-	if c.Cc != "cc@example.com" { t.Errorf("Cc: got %q", c.Cc) }
-	if c.Bcc != "bcc@example.com" { t.Errorf("Bcc: got %q", c.Bcc) }
-	if c.DeliveredTo != "delivered@example.com" { t.Errorf("DeliveredTo: got %q", c.DeliveredTo) }
-	if c.List != "list@example.com" { t.Errorf("List: got %q", c.List) }
-	if c.Filename != "report.pdf" { t.Errorf("Filename: got %q", c.Filename) }
-	if c.After != "2024/01/01" { t.Errorf("After: got %q", c.After) }
-	if c.Before != "2024/06/01" { t.Errorf("Before: got %q", c.Before) }
-	if c.OlderThan != "30d" { t.Errorf("OlderThan: got %q", c.OlderThan) }
-	if c.NewerThan != "7d" { t.Errorf("NewerThan: got %q", c.NewerThan) }
-	if c.Size != "10M" { t.Errorf("Size: got %q", c.Size) }
-	if c.Larger != "5M" { t.Errorf("Larger: got %q", c.Larger) }
-	if c.Smaller != "1M" { t.Errorf("Smaller: got %q", c.Smaller) }
+	if c.From != "from@example.com" {
+		t.Errorf("From: got %q", c.From)
+	}
+	if c.To != "to@example.com" {
+		t.Errorf("To: got %q", c.To)
+	}
+	if c.Subject != "subject text" {
+		t.Errorf("Subject: got %q", c.Subject)
+	}
+	if c.HasTheWord != "important" {
+		t.Errorf("HasTheWord: got %q", c.HasTheWord)
+	}
+	if c.HasAttachment == nil || !*c.HasAttachment {
+		t.Error("HasAttachment expected true")
+	}
+	if c.Is != "unread" {
+		t.Errorf("Is: got %q", c.Is)
+	}
+	if c.In != "inbox" {
+		t.Errorf("In: got %q", c.In)
+	}
+	if c.Cc != "cc@example.com" {
+		t.Errorf("Cc: got %q", c.Cc)
+	}
+	if c.Bcc != "bcc@example.com" {
+		t.Errorf("Bcc: got %q", c.Bcc)
+	}
+	if c.DeliveredTo != "delivered@example.com" {
+		t.Errorf("DeliveredTo: got %q", c.DeliveredTo)
+	}
+	if c.List != "list@example.com" {
+		t.Errorf("List: got %q", c.List)
+	}
+	if c.Filename != "report.pdf" {
+		t.Errorf("Filename: got %q", c.Filename)
+	}
+	if c.After != "2024/01/01" {
+		t.Errorf("After: got %q", c.After)
+	}
+	if c.Before != "2024/06/01" {
+		t.Errorf("Before: got %q", c.Before)
+	}
+	if c.OlderThan != "30d" {
+		t.Errorf("OlderThan: got %q", c.OlderThan)
+	}
+	if c.NewerThan != "7d" {
+		t.Errorf("NewerThan: got %q", c.NewerThan)
+	}
+	if c.Size != "10M" {
+		t.Errorf("Size: got %q", c.Size)
+	}
+	if c.Larger != "5M" {
+		t.Errorf("Larger: got %q", c.Larger)
+	}
+	if c.Smaller != "1M" {
+		t.Errorf("Smaller: got %q", c.Smaller)
+	}
 }
 
 func TestImportGmailXML_AllActions(t *testing.T) {
@@ -163,16 +201,36 @@ func TestImportGmailXML_AllActions(t *testing.T) {
 	if a == nil {
 		t.Fatal("expected action")
 	}
-	if a.Archive == nil || !*a.Archive { t.Error("expected Archive true") }
-	if a.MarkRead == nil || !*a.MarkRead { t.Error("expected MarkRead true") }
-	if a.Star == nil || *a.Star { t.Error("expected Star false") }
-	if a.Delete == nil || *a.Delete { t.Error("expected Delete false") }
-	if a.NeverSpam == nil || !*a.NeverSpam { t.Error("expected NeverSpam true") }
-	if a.AlwaysSpam == nil || *a.AlwaysSpam { t.Error("expected AlwaysSpam false") }
-	if a.Forward != "backup@example.com" { t.Errorf("Forward: got %q", a.Forward) }
-	if a.Label != "Auto-Label" { t.Errorf("Label: got %q", a.Label) }
-	if a.SmartLabel != "Smart Label" { t.Errorf("SmartLabel: got %q", a.SmartLabel) }
-	if a.MoveToTrash == nil || !*a.MoveToTrash { t.Error("expected MoveToTrash true") }
+	if a.Archive == nil || !*a.Archive {
+		t.Error("expected Archive true")
+	}
+	if a.MarkRead == nil || !*a.MarkRead {
+		t.Error("expected MarkRead true")
+	}
+	if a.Star == nil || *a.Star {
+		t.Error("expected Star false")
+	}
+	if a.Delete == nil || *a.Delete {
+		t.Error("expected Delete false")
+	}
+	if a.NeverSpam == nil || !*a.NeverSpam {
+		t.Error("expected NeverSpam true")
+	}
+	if a.AlwaysSpam == nil || *a.AlwaysSpam {
+		t.Error("expected AlwaysSpam false")
+	}
+	if a.Forward != "backup@example.com" {
+		t.Errorf("Forward: got %q", a.Forward)
+	}
+	if a.Label != "Auto-Label" {
+		t.Errorf("Label: got %q", a.Label)
+	}
+	if a.SmartLabel != "Smart Label" {
+		t.Errorf("SmartLabel: got %q", a.SmartLabel)
+	}
+	if a.MoveToTrash == nil || !*a.MoveToTrash {
+		t.Error("expected MoveToTrash true")
+	}
 }
 
 func TestImportGmailXML_Roundtrip(t *testing.T) {

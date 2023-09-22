@@ -7,40 +7,44 @@ import (
 	"testing"
 )
 
-func TestEnsureXMLExtension(t *testing.T) {
+func TestEnsureExtension(t *testing.T) {
 	tests := []struct {
 		input string
+		ext   string
 		want  string
 	}{
-		{"feed", "feed.xml"},
-		{"feed.xml", "feed.xml"},
-		{"feed.XML", "feed.XML"},
-		{"feed.atom", "feed.atom.xml"},
-		{"path/to/feed", "path/to/feed.xml"},
-		{"", ".xml"},
+		{"feed", ".xml", "feed.xml"},
+		{"feed.xml", ".xml", "feed.xml"},
+		{"feed.XML", ".xml", "feed.XML"},
+		{"feed.atom", ".xml", "feed.atom.xml"},
+		{"path/to/feed", ".xml", "path/to/feed.xml"},
+		{"", ".xml", ".xml"},
+		{"filters", ".yaml", "filters.yaml"},
+		{"filters.yaml", ".yaml", "filters.yaml"},
+		{"filters.xml", "", "filters.xml"},
 	}
 	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got := ensureXMLExtension(tt.input)
+		t.Run(tt.input+"|"+tt.ext, func(t *testing.T) {
+			got := ensureExtension(tt.input, tt.ext)
 			if got != tt.want {
-				t.Errorf("ensureXMLExtension(%q) = %q, want %q", tt.input, got, tt.want)
+				t.Errorf("ensureExtension(%q, %q) = %q, want %q", tt.input, tt.ext, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestValidateFileOverwrite_NewFile(t *testing.T) {
+func TestCheckOverwrite_NewFile(t *testing.T) {
 	path := filepath.Join(os.TempDir(), "test-new-"+strings.Repeat("x", 10)+".xml")
 	os.Remove(path)
 	defer os.Remove(path)
 
-	err := validateFileOverwrite(path, false)
+	err := checkOverwrite(path, false)
 	if err != nil {
 		t.Errorf("expected no error for new file, got %v", err)
 	}
 }
 
-func TestValidateFileOverwrite_ExistingNoForce(t *testing.T) {
+func TestCheckOverwrite_ExistingNoForce(t *testing.T) {
 	f, err := os.CreateTemp("", "save-test-*.xml")
 	if err != nil {
 		t.Fatal(err)
@@ -48,13 +52,13 @@ func TestValidateFileOverwrite_ExistingNoForce(t *testing.T) {
 	f.Close()
 	defer os.Remove(f.Name())
 
-	err = validateFileOverwrite(f.Name(), false)
+	err = checkOverwrite(f.Name(), false)
 	if err == nil {
 		t.Fatal("expected error for existing file without force")
 	}
 }
 
-func TestValidateFileOverwrite_ExistingWithForce(t *testing.T) {
+func TestCheckOverwrite_ExistingWithForce(t *testing.T) {
 	f, err := os.CreateTemp("", "save-test-*.xml")
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +66,7 @@ func TestValidateFileOverwrite_ExistingWithForce(t *testing.T) {
 	f.Close()
 	defer os.Remove(f.Name())
 
-	err = validateFileOverwrite(f.Name(), true)
+	err = checkOverwrite(f.Name(), true)
 	if err != nil {
 		t.Errorf("expected no error with force, got %v", err)
 	}
@@ -124,14 +128,17 @@ func TestSaveXML_ForceOverwrite(t *testing.T) {
 	}
 }
 
-func TestSaveXML_AddsXMLExtension(t *testing.T) {
+func TestSaveFile_AddsXMLExtension(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "feed")
 	defer os.Remove(path + ".xml")
 
-	err := SaveXML([]byte("<feed></feed>"), path, false)
+	written, err := SaveFile([]byte("<feed></feed>"), path, ".xml", false)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if written != path+".xml" {
+		t.Errorf("expected written path %q, got %q", path+".xml", written)
 	}
 
 	if _, err := os.Stat(path + ".xml"); os.IsNotExist(err) {
@@ -139,12 +146,12 @@ func TestSaveXML_AddsXMLExtension(t *testing.T) {
 	}
 }
 
-func TestSaveXML_CreatesDirectories(t *testing.T) {
+func TestSaveFile_CreatesDirectories(t *testing.T) {
 	dir := filepath.Join(os.TempDir(), "save-nested-"+strings.Repeat("z", 8), "sub")
 	defer os.RemoveAll(filepath.Dir(dir))
 
 	path := filepath.Join(dir, "feed.xml")
-	err := SaveXML([]byte("<feed></feed>"), path, false)
+	_, err := SaveFile([]byte("<feed></feed>"), path, ".xml", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,11 +161,25 @@ func TestSaveXML_CreatesDirectories(t *testing.T) {
 	}
 }
 
-func TestSaveXML_NilData(t *testing.T) {
+func TestSaveYAML(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "filters")
+	defer os.Remove(path + ".yaml")
+
+	written, err := SaveYAML([]byte("filters: []\n"), path, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != path+".yaml" {
+		t.Errorf("expected %q, got %q", path+".yaml", written)
+	}
+}
+
+func TestSaveFile_NilData(t *testing.T) {
 	path := filepath.Join(os.TempDir(), "save-nil-"+strings.Repeat("w", 8)+".xml")
 	defer os.Remove(path)
 
-	err := SaveXML([]byte{}, path, false)
+	_, err := SaveFile([]byte{}, path, ".xml", false)
 	if err != nil {
 		t.Fatal(err)
 	}

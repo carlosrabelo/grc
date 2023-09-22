@@ -3,13 +3,14 @@ package parser
 import (
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/carlosrabelo/grc/grc/pkg/types"
 )
 
 type operatorMap struct {
-	field    string
-	setFn    func(*types.GmailCriteria, string)
+	field string
+	setFn func(*types.GmailCriteria, string)
 }
 
 var operators = []operatorMap{
@@ -17,7 +18,7 @@ var operators = []operatorMap{
 	{"to", func(c *types.GmailCriteria, v string) { c.To = v }},
 	{"subject", func(c *types.GmailCriteria, v string) { c.Subject = v }},
 	{"has", func(c *types.GmailCriteria, v string) {
-		if strings.ToLower(v) == "attachment" {
+		if strings.EqualFold(v, "attachment") {
 			t := true
 			c.HasAttachment = &t
 		}
@@ -40,10 +41,12 @@ var operators = []operatorMap{
 	{"category", func(c *types.GmailCriteria, v string) { c.Category = v }},
 }
 
+// Parse converts a Gmail search expression into structured GmailCriteria.
+// Negated tokens (e.g. "-from:spam") are preserved verbatim in HasTheWord,
+// since the GmailCriteria struct has no dedicated negation field.
 func Parse(expression string) *types.GmailCriteria {
 	c := &types.GmailCriteria{}
-	tokens := tokenize(expression)
-	for _, token := range tokens {
+	for _, token := range tokenize(expression) {
 		applyToken(c, token)
 	}
 	return c
@@ -53,41 +56,46 @@ func tokenize(expr string) []string {
 	var tokens []string
 	var buf strings.Builder
 	inQuote := false
-	quoteChar := byte(0)
+	quoteRune := rune(0)
 	depth := 0
 
-	for i := 0; i < len(expr); i++ {
-		ch := expr[i]
+	for i := 0; i < len(expr); {
+		r, size := utf8.DecodeRuneInString(expr[i:])
+		i += size
+
 		if inQuote {
-			buf.WriteByte(ch)
-			if ch == quoteChar {
+			buf.WriteRune(r)
+			if r == quoteRune {
 				inQuote = false
 			}
 			continue
 		}
-		if ch == '"' || ch == '\'' {
+		if r == '"' || r == '\'' {
 			inQuote = true
-			quoteChar = ch
-			buf.WriteByte(ch)
+			quoteRune = r
+			buf.WriteRune(r)
 			continue
 		}
-		if ch == '(' || ch == ')' {
-			if ch == '(' {
-				depth++
-			} else {
+		switch r {
+		case '(':
+			depth++
+			buf.WriteRune(r)
+			continue
+		case ')':
+			if depth > 0 {
 				depth--
 			}
-			buf.WriteByte(ch)
+			buf.WriteRune(r)
 			continue
 		}
-		if unicode.IsSpace(rune(ch)) && depth == 0 {
+		if unicode.IsSpace(r) && depth == 0 {
 			if buf.Len() > 0 {
 				tokens = append(tokens, buf.String())
 				buf.Reset()
 			}
 			continue
 		}
-		buf.WriteByte(ch)
+		buf.WriteRune(r)
 	}
 	if buf.Len() > 0 {
 		tokens = append(tokens, buf.String())
@@ -96,10 +104,13 @@ func tokenize(expr string) []string {
 }
 
 func applyToken(c *types.GmailCriteria, token string) {
-	// Remove negation prefix
-	token = strings.TrimPrefix(token, "-")
+	// Detect but preserve negation: "-from:spam" stays intact so it can be
+	// reconstructed correctly via query.BuildSearchString.
+	if strings.HasPrefix(token, "-") {
+		appendHasTheWord(c, token)
+		return
+	}
 
-	// Check for operator:value pattern
 	colonIdx := strings.Index(token, ":")
 	if colonIdx == -1 {
 		appendHasTheWord(c, token)
@@ -109,15 +120,7 @@ func applyToken(c *types.GmailCriteria, token string) {
 	op := strings.ToLower(token[:colonIdx])
 	rawValue := token[colonIdx+1:]
 
-	// Unwrap parentheses from value: subject:(a OR b) → a OR b
-	value := unwrapParens(rawValue)
-
-	// Unwrap quotes from value
-	value = strings.TrimFunc(value, func(r rune) bool {
-		return r == '"' || r == '\''
-	})
-
-	value = strings.TrimSpace(value)
+	value := strings.TrimSpace(unwrapQuotes(unwrapParens(rawValue)))
 	if value == "" {
 		return
 	}
@@ -129,34 +132,46 @@ func applyToken(c *types.GmailCriteria, token string) {
 		}
 	}
 
-	// Unknown operator — treat as hasTheWord with full token
 	appendHasTheWord(c, token)
 }
 
+// unwrapParens removes a single pair of outer parentheses only when they
+// span the entire string (e.g. "(a OR b)" → "a OR b", but "(a) OR (b)" is unchanged).
 func unwrapParens(s string) string {
 	s = strings.TrimSpace(s)
-	if len(s) >= 2 && s[0] == '(' && s[len(s)-1] == ')' {
-		inner := s[1 : len(s)-1]
-		depth := 0
-		for i := 0; i < len(s); i++ {
-			if s[i] == '(' {
-				depth++
-			} else if s[i] == ')' {
-				depth--
-			}
-			if depth == 0 && i < len(s)-1 {
-				return s
-			}
+	runes := []rune(s)
+	if len(runes) < 2 || runes[0] != '(' || runes[len(runes)-1] != ')' {
+		return s
+	}
+	depth := 0
+	for i, r := range runes {
+		switch r {
+		case '(':
+			depth++
+		case ')':
+			depth--
 		}
-		return inner
+		if depth == 0 && i < len(runes)-1 {
+			return s
+		}
+	}
+	return string(runes[1 : len(runes)-1])
+}
+
+// unwrapQuotes removes a matching pair of surrounding quotes (single or double).
+func unwrapQuotes(s string) string {
+	if len(s) < 2 {
+		return s
+	}
+	first := s[0]
+	last := s[len(s)-1]
+	if (first == '"' && last == '"') || (first == '\'' && last == '\'') {
+		return s[1 : len(s)-1]
 	}
 	return s
 }
 
 func appendHasTheWord(c *types.GmailCriteria, token string) {
-	token = strings.TrimFunc(token, func(r rune) bool {
-		return r == '"' || r == '\''
-	})
 	token = strings.TrimSpace(token)
 	if token == "" {
 		return

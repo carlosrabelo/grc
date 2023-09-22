@@ -6,20 +6,29 @@ YAML, e converte XML do Google Takeout de volta para YAML.
 ## Funcionalidades
 
 - **Atom XML** — Gera feeds Atom com categorias, autores e propriedades
-- **Gmail XML** — Gera XML compatível com importação do Gmail (`--format gmail`)
-- **Importar** — Converte XML do Google Takeout para YAML (`--import`)
-- **Parser de expressão** — Interpreta sintaxe de busca do Gmail (`from:`, `subject:`, …)
+- **Gmail XML** — Gera XML compatível com importação do Gmail via `grc gmail`
+- **Importar** — Converte XML do Google Takeout para YAML via `grc import`
+- **Parser de expressão** — Interpreta sintaxe de busca do Gmail (`from:`, `subject:`, `has:attachment`, …)
 - **Construtor de busca** — Gera links `mail.google.com/#search/…` a partir de critérios
 - **Round-trip** — YAML → Gmail XML → YAML sem perda de dados
 
-## Instalar
+## Instalação
+
+### Compilar a partir do código-fonte
 
 ```bash
+git clone https://github.com/carlosrabelo/grc.git
+cd grc
 make build
-sudo cp bin/grc /usr/local/bin/
 ```
 
-Ou:
+Instalar em `~/.local/bin` (sem precisar de root):
+
+```bash
+make install
+```
+
+### Usando Go Install
 
 ```bash
 go install github.com/carlosrabelo/grc/grc/cmd/grc@latest
@@ -28,34 +37,50 @@ go install github.com/carlosrabelo/grc/grc/cmd/grc@latest
 ## Uso
 
 ```
-grc [opções] <entrada> [saída]
-grc --import <gmail.xml> [saída]
+grc <comando> [flags] <entrada> [saída]
+
+Comandos:
+  atom      Gera feed Atom XML a partir de YAML
+  gmail     Gera XML de importação do Gmail a partir de YAML
+  import    Importa XML de filtros do Gmail de volta para YAML
+  help      Exibe ajuda (use "grc help <comando>" para detalhes)
+  version   Exibe a versão
+
+Flags comuns:
+  --output PATH   Caminho de saída explícito
+  --force         Sobrescreve arquivo de saída existente
+  --verbose       Ativa log detalhado
+  -h, --help      Exibe ajuda do comando atual
 ```
 
-| Flag              | Descrição                                        |
-|-------------------|--------------------------------------------------|
-| `--format atom`   | Saída Atom XML (padrão)                          |
-| `--format gmail`  | Saída XML de importação do Gmail                 |
-| `--import`        | Converte XML do Gmail → YAML                     |
-| `--force`         | Sobrescreve arquivo de saída existente           |
-| `--verbose`       | Ativa log detalhado                              |
-| `--version`       | Exibe versão                                     |
-| `--help`          | Exibe ajuda                                      |
+### Caminhos de saída padrão
+
+| Comando  | Extensão padrão  | Exemplo                                |
+|----------|------------------|----------------------------------------|
+| `atom`   | `.xml`           | `cfg/example.yaml` → `example.xml`     |
+| `gmail`  | `.gmail.xml`     | `cfg/example.yaml` → `example.gmail.xml` |
+| `import` | `.yaml`          | `takeout.xml` → `takeout.yaml`         |
 
 ### Exemplos
 
 ```bash
-# Feed Atom (padrão)
-grc cfg/example.yaml
+# Feed Atom
+grc atom cfg/example.yaml
 
 # XML de importação do Gmail
-grc --format gmail cfg/example-gmail.yaml
+grc gmail cfg/example-gmail.yaml
 
-# Caminho de saída personalizado
-grc --format gmail cfg/example-gmail.yaml meus-filtros.xml
+# Caminho de saída personalizado (posicional)
+grc gmail cfg/example-gmail.yaml meus-filtros.xml
+
+# O mesmo, via flag --output
+grc gmail --output meus-filtros.xml cfg/example-gmail.yaml
 
 # Importar XML do Google Takeout
-grc --import takeout.xml convertido.yaml
+grc import takeout.xml convertido.yaml
+
+# Sobrescrever saída existente
+grc gmail --force cfg/example-gmail.yaml
 ```
 
 ## YAML — Formato Atom
@@ -111,11 +136,16 @@ Campos de ação: `archive`, `markRead`, `star`, `delete`, `neverSpam`,
 
 Veja `cfg/example-gmail.yaml` com 16 filtros de exemplo.
 
-## Compilar
+## Desenvolvimento
 
 ```bash
-make build        # bin/grc
-make test         # todos os testes
-make quality      # fmt + vet + lint + test
-make clean        # remove artefatos
+make build      # Compila o binário para bin/grc
+make test       # Executa todos os testes
+make quality    # fmt + vet + lint + test
+make install    # Instala em ~/.local/bin
+make clean      # Remove artefatos de build
 ```
+
+## Licença
+
+Este projeto está licenciado sob a Licença MIT — veja [LICENSE](LICENSE) para detalhes.

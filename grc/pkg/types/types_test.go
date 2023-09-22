@@ -178,9 +178,9 @@ func TestGmailActionDefaults(t *testing.T) {
 func TestGmailActionFields(t *testing.T) {
 	archive := true
 	a := GmailAction{
-		Archive:  &archive,
-		Label:    "Important",
-		Forward:  "backup@example.com",
+		Archive: &archive,
+		Label:   "Important",
+		Forward: "backup@example.com",
 	}
 	if a.Archive == nil || *a.Archive != true {
 		t.Error("expected archive true")

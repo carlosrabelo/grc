@@ -157,8 +157,10 @@ func TestParse_MixedPlainAndOperators(t *testing.T) {
 
 func TestParse_Negation(t *testing.T) {
 	c := Parse("-from:spam@example.com")
-	// negation prefix is stripped; value still set
-	checkStr(t, "From", c.From, "spam@example.com")
+	// GmailCriteria has no negation field, so negated tokens must be preserved
+	// verbatim in HasTheWord for correct reconstruction by query.BuildSearchString.
+	checkStr(t, "From", c.From, "")
+	checkStr(t, "HasTheWord", c.HasTheWord, "-from:spam@example.com")
 }
 
 func TestParse_Empty(t *testing.T) {

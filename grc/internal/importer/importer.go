@@ -10,13 +10,13 @@ import (
 )
 
 type importFeed struct {
-	XMLName xml.Name     `xml:"feed"`
+	XMLName xml.Name      `xml:"feed"`
 	Entries []importEntry `xml:"entry"`
 }
 
 type importEntry struct {
-	Category   importCategory  `xml:"category"`
-	Title      string          `xml:"title"`
+	Category   importCategory   `xml:"category"`
+	Title      string           `xml:"title"`
 	Properties []importProperty `xml:"http://schemas.google.com/apps/2006 property"`
 }
 
@@ -30,24 +30,24 @@ type importProperty struct {
 }
 
 var criteriaFields = map[string]func(*types.GmailCriteria, string){
-	"from":         func(c *types.GmailCriteria, v string) { c.From = v },
-	"to":           func(c *types.GmailCriteria, v string) { c.To = v },
-	"subject":      func(c *types.GmailCriteria, v string) { c.Subject = v },
-	"hasTheWord":   func(c *types.GmailCriteria, v string) { c.HasTheWord = v },
-	"is":           func(c *types.GmailCriteria, v string) { c.Is = v },
-	"in":           func(c *types.GmailCriteria, v string) { c.In = v },
-	"cc":           func(c *types.GmailCriteria, v string) { c.Cc = v },
-	"bcc":          func(c *types.GmailCriteria, v string) { c.Bcc = v },
-	"deliveredto":  func(c *types.GmailCriteria, v string) { c.DeliveredTo = v },
-	"list":         func(c *types.GmailCriteria, v string) { c.List = v },
-	"filename":     func(c *types.GmailCriteria, v string) { c.Filename = v },
-	"after":        func(c *types.GmailCriteria, v string) { c.After = v },
-	"before":       func(c *types.GmailCriteria, v string) { c.Before = v },
-	"olderThan":    func(c *types.GmailCriteria, v string) { c.OlderThan = v },
-	"newerThan":    func(c *types.GmailCriteria, v string) { c.NewerThan = v },
-	"size":         func(c *types.GmailCriteria, v string) { c.Size = v },
-	"larger":       func(c *types.GmailCriteria, v string) { c.Larger = v },
-	"smaller":      func(c *types.GmailCriteria, v string) { c.Smaller = v },
+	"from":        func(c *types.GmailCriteria, v string) { c.From = v },
+	"to":          func(c *types.GmailCriteria, v string) { c.To = v },
+	"subject":     func(c *types.GmailCriteria, v string) { c.Subject = v },
+	"hasTheWord":  func(c *types.GmailCriteria, v string) { c.HasTheWord = v },
+	"is":          func(c *types.GmailCriteria, v string) { c.Is = v },
+	"in":          func(c *types.GmailCriteria, v string) { c.In = v },
+	"cc":          func(c *types.GmailCriteria, v string) { c.Cc = v },
+	"bcc":         func(c *types.GmailCriteria, v string) { c.Bcc = v },
+	"deliveredto": func(c *types.GmailCriteria, v string) { c.DeliveredTo = v },
+	"list":        func(c *types.GmailCriteria, v string) { c.List = v },
+	"filename":    func(c *types.GmailCriteria, v string) { c.Filename = v },
+	"after":       func(c *types.GmailCriteria, v string) { c.After = v },
+	"before":      func(c *types.GmailCriteria, v string) { c.Before = v },
+	"olderThan":   func(c *types.GmailCriteria, v string) { c.OlderThan = v },
+	"newerThan":   func(c *types.GmailCriteria, v string) { c.NewerThan = v },
+	"size":        func(c *types.GmailCriteria, v string) { c.Size = v },
+	"larger":      func(c *types.GmailCriteria, v string) { c.Larger = v },
+	"smaller":     func(c *types.GmailCriteria, v string) { c.Smaller = v },
 }
 
 var actionFields = map[string]func(*types.GmailAction, string){

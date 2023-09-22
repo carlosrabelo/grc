@@ -22,7 +22,7 @@ build: ## Build binary
 build-static: ## Build fully static binary (CGO_ENABLED=0, netgo)
 	@./.make/build-static.sh
 
-install: ## Build and install to /usr/local/bin (root) or ~/.local/bin (user)
+install: build ## Build and install to /usr/local/bin (root) or ~/.local/bin (user)
 	@./.make/install.sh
 
 test: ## Run all tests

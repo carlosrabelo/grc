@@ -26,43 +26,46 @@ go install github.com/carlosrabelo/grc/grc/cmd/grc@latest
 ## Command-line Interface
 
 ```
-grc [options] <input> [output]
-grc --import <input.xml> [output]
+grc <command> [flags] <input> [output]
 ```
 
-### Arguments
+GRC is organised around subcommands. Each command takes a positional input
+file and an optional positional output path.
 
-| Argument | Description                                                      |
-|----------|------------------------------------------------------------------|
-| `input`  | YAML config file or Gmail XML (when using `--import`)            |
-| `output` | Output path (default depends on mode — see table below)          |
+### Commands
+
+| Command  | Description                                                |
+|----------|------------------------------------------------------------|
+| `atom`   | Generate Atom XML feed from YAML                           |
+| `gmail`  | Generate Gmail-compatible import XML from YAML             |
+| `import` | Convert Gmail filter XML (Google Takeout) back to YAML     |
+| `help`   | Show help (`grc help <command>` for command-specific help) |
+| `version`| Show version and build information                         |
+
+### Common flags (available on `atom`, `gmail`, `import`)
+
+| Flag             | Description                                            |
+|------------------|--------------------------------------------------------|
+| `--output PATH`  | Explicit output path (overrides the positional output) |
+| `--force`        | Overwrite an existing output file                      |
+| `--verbose`      | Enable verbose logging                                 |
+| `-h, --help`     | Show help for the current command                      |
 
 ### Default output paths
 
-| Mode                     | Default extension  | Example                          |
-|--------------------------|--------------------|----------------------------------|
-| `--format atom` (default) | `.xml`            | `cfg/example.yaml` → `example.xml` |
-| `--format gmail`          | `.gmail.xml`      | `cfg/example.yaml` → `example.gmail.xml` |
-| `--import`                | `.yaml`           | `filters.xml` → `filters.yaml`     |
-
-### Options
-
-| Flag            | Description                                   |
-|-----------------|-----------------------------------------------|
-| `--format atom`   | Atom XML output (default)                   |
-| `--format gmail`  | Gmail-compatible import XML                 |
-| `--import`      | Import Gmail filter XML to YAML               |
-| `--force`       | Overwrite existing output file                |
-| `--verbose`     | Enable detailed logging                       |
-| `--version`     | Show version and build time                   |
-| `--help`        | Show help message                             |
+| Command  | Default extension | Example                                |
+|----------|-------------------|----------------------------------------|
+| `atom`   | `.xml`            | `cfg/example.yaml` → `example.xml`     |
+| `gmail`  | `.gmail.xml`      | `cfg/example.yaml` → `example.gmail.xml` |
+| `import` | `.yaml`           | `takeout.xml` → `takeout.yaml`         |
 
 ### Exit codes
 
-| Code | Meaning     |
-|------|-------------|
-| 0    | Success     |
-| 1    | Error       |
+| Code | Meaning       |
+|------|---------------|
+| 0    | Success       |
+| 1    | Runtime error |
+| 2    | Usage error   |
 
 ## YAML Configuration
 
@@ -170,44 +173,44 @@ filters:
 ### Generate Atom feed
 
 ```bash
-grc cfg/example.yaml
+grc atom cfg/example.yaml
 # Produces example.xml
 ```
 
 ### Generate Gmail import XML
 
 ```bash
-grc --format gmail cfg/example-gmail.yaml
+grc gmail cfg/example-gmail.yaml
 # Produces example.gmail.xml
 ```
 
 ### Import Gmail filters from Google Takeout
 
 ```bash
-grc --import takeout-filters.xml
+grc import takeout-filters.xml
 # Produces takeout-filters.yaml
 ```
 
 ### Force overwrite
 
 ```bash
-grc --format gmail --force cfg/example-gmail.yaml output.gmail.xml
+grc gmail --force cfg/example-gmail.yaml -o output.gmail.xml
 ```
 
 ### Verbose mode
 
 ```bash
-grc --verbose --format gmail cfg/example-gmail.yaml
+grc gmail --verbose cfg/example-gmail.yaml
 ```
 
 ### Full round-trip
 
 ```bash
 # YAML → Gmail XML
-grc --format gmail cfg/example-gmail.yaml filters.gmail.xml
+grc gmail cfg/example-gmail.yaml filters.gmail.xml
 
 # Gmail XML → YAML
-grc --import filters.gmail.yaml
+grc import filters.gmail.xml
 ```
 
 ## Expression parser

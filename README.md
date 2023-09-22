@@ -6,20 +6,29 @@ Gmail Takeout XML back to YAML.
 ## Features
 
 - **Atom XML** — Generate Atom feeds with categories, authors, and properties
-- **Gmail XML** — Generate Gmail-compatible import XML (`--format gmail`)
-- **Import** — Convert Google Takeout XML back to YAML (`--import`)
+- **Gmail XML** — Generate Gmail-compatible import XML via `grc gmail`
+- **Import** — Convert Google Takeout XML back to YAML via `grc import`
 - **Expression parser** — Parse Gmail search syntax (`from:`, `subject:`, `has:attachment`, …)
 - **Search builder** — Build `mail.google.com/#search/…` URLs from criteria
 - **Round-trip** — YAML → Gmail XML → YAML without data loss
 
-## Install
+## Installation
+
+### Build from Source
 
 ```bash
+git clone https://github.com/carlosrabelo/grc.git
+cd grc
 make build
-sudo cp bin/grc /usr/local/bin/
 ```
 
-Or:
+Install to `~/.local/bin` (no root required):
+
+```bash
+make install
+```
+
+### Using Go Install
 
 ```bash
 go install github.com/carlosrabelo/grc/grc/cmd/grc@latest
@@ -28,34 +37,50 @@ go install github.com/carlosrabelo/grc/grc/cmd/grc@latest
 ## Usage
 
 ```
-grc [options] <input> [output]
-grc --import <gmail.xml> [output]
+grc <command> [flags] <input> [output]
+
+Commands:
+  atom      Generate Atom XML feed from YAML
+  gmail     Generate Gmail import XML from YAML
+  import    Import Gmail filter XML back to YAML
+  help      Show help (use "grc help <command>" for details)
+  version   Show version
+
+Common flags:
+  --output PATH   Explicit output path
+  --force         Overwrite existing output file
+  --verbose       Enable verbose logging
+  -h, --help      Show help for the current command
 ```
 
-| Flag              | Description                                         |
-|-------------------|-----------------------------------------------------|
-| `--format atom`   | Atom XML output (default)                           |
-| `--format gmail`  | Gmail import XML output                             |
-| `--import`        | Convert Gmail XML → YAML                            |
-| `--force`         | Overwrite existing output file                      |
-| `--verbose`       | Enable detailed logging                             |
-| `--version`       | Show version                                        |
-| `--help`          | Show help                                           |
+### Default output paths
+
+| Command  | Default extension  | Example                              |
+|----------|--------------------|--------------------------------------|
+| `atom`   | `.xml`             | `cfg/example.yaml` → `example.xml`   |
+| `gmail`  | `.gmail.xml`       | `cfg/example.yaml` → `example.gmail.xml` |
+| `import` | `.yaml`            | `takeout.xml` → `takeout.yaml`       |
 
 ### Examples
 
 ```bash
-# Atom feed (default)
-grc cfg/example.yaml
+# Atom feed
+grc atom cfg/example.yaml
 
 # Gmail import XML
-grc --format gmail cfg/example-gmail.yaml
+grc gmail cfg/example-gmail.yaml
 
-# Custom output path
-grc --format gmail cfg/example-gmail.yaml my-filters.xml
+# Custom output path (positional)
+grc gmail cfg/example-gmail.yaml my-filters.xml
+
+# Same, via --output flag
+grc gmail --output my-filters.xml cfg/example-gmail.yaml
 
 # Import Gmail Takeout
-grc --import takeout.xml converted.yaml
+grc import takeout.xml converted.yaml
+
+# Overwrite existing output
+grc gmail --force cfg/example-gmail.yaml
 ```
 
 ## YAML — Atom format
@@ -111,11 +136,16 @@ Action fields: `archive`, `markRead`, `star`, `delete`, `neverSpam`,
 
 See `cfg/example-gmail.yaml` for 16 sample filters.
 
-## Build
+## Development
 
 ```bash
-make build        # bin/grc
-make test         # all tests
-make quality      # fmt + vet + lint + test
-make clean        # remove artifacts
+make build      # Compile binary to bin/grc
+make test       # Run all tests
+make quality    # fmt + vet + lint + test
+make install    # Install to ~/.local/bin
+make clean      # Remove build artifacts
 ```
+
+## License
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
