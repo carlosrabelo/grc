@@ -95,7 +95,9 @@ func TestSaveXML_OverwriteProtected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.WriteString("<old></old>")
+	if _, err := f.WriteString("<old></old>"); err != nil {
+		t.Fatal(err)
+	}
 	f.Close()
 	defer os.Remove(f.Name())
 
@@ -110,7 +112,9 @@ func TestSaveXML_ForceOverwrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.WriteString("<old></old>")
+	if _, err := f.WriteString("<old></old>"); err != nil {
+		t.Fatal(err)
+	}
 	f.Close()
 	defer os.Remove(f.Name())
 

@@ -1,38 +1,39 @@
 name: CI
 
 on:
-  push:
-    branches: ["*"]
-    tags: ["v*"]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: stable
 
-      - run: go fmt ./...
-
-      - run: go vet ./...
-
-      - run: go test ./... -count=1
-
-      - run: go build -o /dev/null ./grc/cmd/grc
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
+      - name: Linter
+        uses: golangci/golangci-lint-action@v9
         with:
-          go-version: stable
+          version: v2.12.2
+          skip-cache: true
 
-      - uses: golangci/golangci-lint-action@v6
+      - name: Formatação e Vet
+        run: |
+          go fmt ./...
+          go vet ./...
+
+      - name: Testes
+        run: go test ./... -count=1
+
+      - name: Build com Hash
+        run: |
+          HASH=$(git rev-parse --short HEAD)
+          go build -o grc-${HASH} ./grc/cmd/grc
+
+      - name: Disponibilizar Pacote
+        uses: actions/upload-artifact@v7
         with:
-          version: latest
+          name: pacote-grc
+          path: grc-*
