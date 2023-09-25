@@ -44,7 +44,7 @@ func GenerateGmailXML(cfg *types.FiltersConfig) ([]byte, error) {
 		AppsNS: appsNS,
 	}
 
-	for _, f := range cfg.Filters {
+	for _, f := range types.FiltersByLabel(cfg.Filters) {
 		entry := gmailEntry{
 			Category: gmailCategory{Term: filterCategory},
 			Title:    f.Name,

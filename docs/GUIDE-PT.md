@@ -106,7 +106,7 @@ filters:
 | `name`       | string  | sim         | Nome do filtro (título da entrada)   |
 | `expression` | string  | sim*        | Expressão de busca no estilo Gmail   |
 | `criteria`   | objeto  | sim*        | Critérios Gmail estruturados         |
-| `action`     | objeto  | não         | Ações do Gmail a aplicar             |
+| `action`     | objeto  | **sim**      | Ações do Gmail a aplicar. **Deve incluir `label`** |
 | `category`   | objeto  | não         | Categoria Atom (term, scheme, label) |
 | `author`     | objeto  | não         | Autor Atom (name, email, uri)        |
 | `properties` | lista   | não         | Pares chave-valor no resumo          |
@@ -128,6 +128,10 @@ filters:
 ```
 
 #### Campos de critério
+
+> **Importante**: todo filtro **deve** incluir `action.label` — a pasta de destino
+> (rótulo do Gmail). Os filtros são ordenados alfabeticamente por este rótulo na
+> saída gerada (Atom e Gmail XML).
 
 | Campo          | Tipo    | Descrição                              |
 |----------------|---------|----------------------------------------|
@@ -155,18 +159,18 @@ filters:
 
 #### Campos de ação
 
-| Campo         | Tipo    | Descrição                          |
-|---------------|---------|------------------------------------|
-| `archive`     | bool    | Pular caixa de entrada             |
-| `markRead`    | bool    | Marcar como lido                   |
-| `star`        | bool    | Destacar mensagem                  |
-| `delete`      | bool    | Enviar para lixeira                |
-| `neverSpam`   | bool    | Nunca marcar como spam             |
-| `alwaysSpam`  | bool    | Sempre marcar como spam            |
-| `forward`     | string  | Encaminhar para email              |
-| `label`       | string  | Aplicar rótulo                     |
-| `smartLabel`  | string  | Aplicar categoria de rótulo inteligente |
-| `moveToTrash` | bool    | Mover para lixeira                 |
+| Campo         | Tipo    | Obrigatório | Descrição                          |
+|---------------|---------|-------------|------------------------------------|
+| `label`       | string  | **sim**     | Pasta de destino (rótulo do Gmail) |
+| `archive`     | bool    | não         | Pular caixa de entrada             |
+| `markRead`    | bool    | não         | Marcar como lido                   |
+| `star`        | bool    | não         | Destacar mensagem                  |
+| `delete`      | bool    | não         | Enviar para lixeira                |
+| `neverSpam`   | bool    | não         | Nunca marcar como spam             |
+| `alwaysSpam`  | bool    | não         | Sempre marcar como spam            |
+| `forward`     | string  | não         | Encaminhar para email              |
+| `smartLabel`  | string  | não         | Aplicar categoria de rótulo inteligente |
+| `moveToTrash` | bool    | não         | Mover para lixeira                 |
 
 ## Exemplos de uso
 

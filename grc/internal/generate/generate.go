@@ -11,11 +11,13 @@ import (
 
 // GenerateFeed builds an Atom feed from the configuration without mutating it.
 // Filter-level defaults are resolved into the produced entries, leaving the
-// input cfg.Filters untouched.
+// input cfg.Filters untouched. Filters are emitted alphabetically by their
+// destination label (action.label).
 func GenerateFeed(cfg *types.FiltersConfig) (*types.Feed, error) {
 	feed := createBaseFeed()
-	for i := range cfg.Filters {
-		feed.Entries = append(feed.Entries, *createFeedEntry(&cfg.Filters[i], cfg.Defaults))
+	ordered := types.FiltersByLabel(cfg.Filters)
+	for i := range ordered {
+		feed.Entries = append(feed.Entries, *createFeedEntry(&ordered[i], cfg.Defaults))
 	}
 	return feed, nil
 }

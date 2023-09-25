@@ -184,7 +184,8 @@ func TestEndToEnd_Roundtrip(t *testing.T) {
     criteria:
       from: spam@example.com
     action:
-      alwaysSpam: true`
+      alwaysSpam: true
+      label: Spam`
 
 	path := writeTestYAML(t, yaml)
 	orig, err := loader.LoadConfig(path)
@@ -211,9 +212,14 @@ func TestEndToEnd_Roundtrip(t *testing.T) {
 		t.Fatalf("expected %d filters, got %d", len(orig.Filters), len(imported.Filters))
 	}
 
-	for i, f := range imported.Filters {
-		if f.Name != orig.Filters[i].Name {
-			t.Errorf("filter %d: name got %q, want %q", i, f.Name, orig.Filters[i].Name)
+	// Filters are emitted sorted by action.label; compare as sets.
+	byName := make(map[string]bool, len(orig.Filters))
+	for _, f := range orig.Filters {
+		byName[f.Name] = true
+	}
+	for _, f := range imported.Filters {
+		if !byName[f.Name] {
+			t.Errorf("unexpected filter %q after roundtrip", f.Name)
 		}
 	}
 }
@@ -344,7 +350,9 @@ func TestEndToEnd_CLIFormatAtom(t *testing.T) {
 	yaml := `filters:
   - name: Test
     criteria:
-      from: a@b.com`
+      from: a@b.com
+    action:
+      label: Inbox`
 
 	yamlPath := writeTestYAML(t, yaml)
 	output := filepath.Join(t.TempDir(), "atom.xml")
@@ -403,7 +411,9 @@ func TestEndToEnd_CriteriaOnlyFilter(t *testing.T) {
   - name: MatchOnly
     criteria:
       from: match@example.com
-      subject: alert`
+      subject: alert
+    action:
+      label: Inbox`
 
 	yamlPath := writeTestYAML(t, yaml)
 	cfg, err := loader.LoadConfig(yamlPath)
@@ -427,6 +437,45 @@ func TestEndToEnd_CriteriaOnlyFilter(t *testing.T) {
 	}
 	if !contains(names, "subject") {
 		t.Error("expected subject")
+	}
+}
+
+func TestEndToEnd_SortByLabel(t *testing.T) {
+	yaml := `filters:
+  - name: Zeta
+    criteria: { from: z@x.com }
+    action: { label: "ZZ Top" }
+  - name: Alpha
+    criteria: { from: a@x.com }
+    action: { label: "AAA Service" }
+  - name: Mid
+    criteria: { from: m@x.com }
+    action: { label: "MMM Group" }`
+
+	path := writeTestYAML(t, yaml)
+	cfg, err := loader.LoadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := gmail.GenerateGmailXML(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var feed gmailFeed
+	if err := xml.Unmarshal(data, &feed); err != nil {
+		t.Fatalf("valid XML: %v", err)
+	}
+
+	if len(feed.Entries) != 3 {
+		t.Fatalf("expected 3 entries, got %d", len(feed.Entries))
+	}
+	wantOrder := []string{"Alpha", "Mid", "Zeta"}
+	for i, want := range wantOrder {
+		if feed.Entries[i].Title != want {
+			t.Errorf("entry %d: got %q, want %q (not sorted by label)", i, feed.Entries[i].Title, want)
+		}
 	}
 }
 

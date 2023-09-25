@@ -25,6 +25,7 @@ filters:
     criteria:
       from: spam@example.com
     action:
+      label: Spam
       alwaysSpam: true
 
   - name: Important Clients
@@ -49,6 +50,7 @@ filters:
       subject: "(discount OR promo OR sale)"
       category: promotions
     action:
+      label: Promotions
       delete: true
 
   - name: Social Notifications
@@ -56,6 +58,7 @@ filters:
       category: social
       older_than: 30d
     action:
+      label: Social
       moveToTrash: true
 
   - name: Unread Priority
@@ -71,6 +74,7 @@ filters:
       hasTheWord: "(receipt OR purchase)"
       subject: "your order"
     action:
+      label: Receipts
       smartLabel: receipts
       archive: true
 
@@ -87,6 +91,7 @@ filters:
       to: archive@example.com
       before: 2024/01/01
     action:
+      label: Archive
       delete: true
 
   - name: Snoozed FollowUp

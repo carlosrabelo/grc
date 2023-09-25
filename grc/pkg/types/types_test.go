@@ -211,3 +211,79 @@ func TestFilterWithCriteria(t *testing.T) {
 		t.Errorf("got label %q", f.Action.Label)
 	}
 }
+
+func TestFiltersByLabel_SortsAlphabetically(t *testing.T) {
+	filters := []Filter{
+		{Name: "zeta", Action: &GmailAction{Label: "Zebra"}},
+		{Name: "alpha", Action: &GmailAction{Label: "Apple"}},
+		{Name: "mid", Action: &GmailAction{Label: "Mango"}},
+	}
+
+	out := FiltersByLabel(filters)
+
+	if len(out) != 3 {
+		t.Fatalf("expected 3 filters, got %d", len(out))
+	}
+	want := []string{"Apple", "Mango", "Zebra"}
+	for i, w := range want {
+		if out[i].Action.Label != w {
+			t.Errorf("position %d: got label %q, want %q", i, out[i].Action.Label, w)
+		}
+	}
+}
+
+func TestFiltersByLabel_CaseInsensitive(t *testing.T) {
+	filters := []Filter{
+		{Name: "a", Action: &GmailAction{Label: "banana"}},
+		{Name: "b", Action: &GmailAction{Label: "Apple"}},
+	}
+
+	out := FiltersByLabel(filters)
+
+	if out[0].Action.Label != "Apple" {
+		t.Errorf("expected Apple first (case-insensitive), got %q", out[0].Action.Label)
+	}
+}
+
+func TestFiltersByLabel_StableForEqualLabels(t *testing.T) {
+	filters := []Filter{
+		{Name: "first", Action: &GmailAction{Label: "Same"}},
+		{Name: "second", Action: &GmailAction{Label: "Same"}},
+		{Name: "third", Action: &GmailAction{Label: "Same"}},
+	}
+
+	out := FiltersByLabel(filters)
+
+	// Stable sort preserves original order for equal keys.
+	for i, want := range []string{"first", "second", "third"} {
+		if out[i].Name != want {
+			t.Errorf("position %d: got %q, want %q (not stable)", i, out[i].Name, want)
+		}
+	}
+}
+
+func TestFiltersByLabel_DoesNotMutateInput(t *testing.T) {
+	filters := []Filter{
+		{Name: "zeta", Action: &GmailAction{Label: "Zebra"}},
+		{Name: "alpha", Action: &GmailAction{Label: "Apple"}},
+	}
+
+	_ = FiltersByLabel(filters)
+
+	if filters[0].Name != "zeta" {
+		t.Errorf("input was mutated: filters[0].Name = %q, want %q", filters[0].Name, "zeta")
+	}
+}
+
+func TestFiltersByLabel_NilActionTreatedAsEmpty(t *testing.T) {
+	filters := []Filter{
+		{Name: "labeled", Action: &GmailAction{Label: "Inbox"}},
+		{Name: "bare"}, // no Action — sorted as empty string, comes first
+	}
+
+	out := FiltersByLabel(filters)
+
+	if out[0].Name != "bare" {
+		t.Errorf("expected bare filter first, got %q", out[0].Name)
+	}
+}

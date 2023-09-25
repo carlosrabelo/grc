@@ -101,13 +101,13 @@ filters:
 
 #### Atom fields
 
-| Field        | Type    | Required | Description                           |
-|--------------|---------|----------|---------------------------------------|
-| `name`       | string  | yes      | Filter name (becomes entry title)     |
-| `expression` | string  | yes*     | Gmail search expression               |
+| Field        | Type    | Required | Description                                   |
+|--------------|---------|----------|-----------------------------------------------|
+| `name`       | string  | yes      | Filter name (becomes entry title)             |
+| `expression` | string  | yes*     | Gmail search expression                       |
 | `criteria`   | object  | yes*     | Structured Gmail criteria (alt to expression) |
-| `action`     | object  | no       | Gmail actions to apply                |
-| `category`   | object  | no       | Atom category (term, scheme, label)   |
+| `action`     | object  | **yes**  | Gmail actions to apply. **Must include `label`** |
+| `category`   | object  | no       | Atom category (term, scheme, label)           |
 | `author`     | object  | no       | Atom author (name, email, uri)        |
 | `properties` | array   | no       | Key-value pairs in entry summary      |
 
@@ -153,20 +153,24 @@ filters:
 | `label`        | string  | Has label                            |
 | `category`     | string  | Gmail category (`primary`, `social`, `promotions`, `updates`, `forums`) |
 
+> **Important**: every filter **must** include `action.label` — the destination
+> folder (Gmail label). Filters are sorted alphabetically by this label in the
+> generated output (Atom and Gmail XML).
+
 #### Action fields
 
-| Field         | Type    | Description                      |
-|---------------|---------|----------------------------------|
-| `archive`     | bool    | Skip inbox                       |
-| `markRead`    | bool    | Mark as read                     |
-| `star`        | bool    | Star the message                 |
-| `delete`      | bool    | Send to trash                    |
-| `neverSpam`   | bool    | Never send to spam               |
-| `alwaysSpam`  | bool    | Always mark as spam              |
-| `forward`     | string  | Forward to email address         |
-| `label`       | string  | Apply label                      |
-| `smartLabel`  | string  | Apply smart label category       |
-| `moveToTrash` | bool    | Move to trash                    |
+| Field         | Type    | Required | Description                      |
+|---------------|---------|----------|----------------------------------|
+| `label`       | string  | **yes**  | Destination folder (Gmail label) |
+| `archive`     | bool    | no       | Skip inbox                       |
+| `markRead`    | bool    | no       | Mark as read                     |
+| `star`        | bool    | no       | Star the message                 |
+| `delete`      | bool    | no       | Send to trash                    |
+| `neverSpam`   | bool    | no       | Never send to spam               |
+| `alwaysSpam`  | bool    | no       | Always mark as spam              |
+| `forward`     | string  | no       | Forward to email address         |
+| `smartLabel`  | string  | no       | Apply smart label category       |
+| `moveToTrash` | bool    | no       | Move to trash                    |
 
 ## Usage examples
 

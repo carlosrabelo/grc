@@ -255,6 +255,7 @@ func TestImportGmailXML_Roundtrip(t *testing.T) {
 				},
 				Action: &types.GmailAction{
 					AlwaysSpam: boolPtr(true),
+					Label:      "Spam",
 				},
 			},
 		},
@@ -274,9 +275,20 @@ func TestImportGmailXML_Roundtrip(t *testing.T) {
 		t.Fatalf("expected %d filters, got %d", len(original.Filters), len(imported.Filters))
 	}
 
-	for i, f := range imported.Filters {
-		if f.Name != original.Filters[i].Name {
-			t.Errorf("filter %d: name got %q, want %q", i, f.Name, original.Filters[i].Name)
+	// GenerateGmailXML emits filters sorted alphabetically by action.label,
+	// so the imported order reflects label order, not the original slice order.
+	byName := make(map[string]types.Filter, len(imported.Filters))
+	for _, f := range imported.Filters {
+		byName[f.Name] = f
+	}
+	for _, orig := range original.Filters {
+		f, ok := byName[orig.Name]
+		if !ok {
+			t.Errorf("filter %q missing after roundtrip", orig.Name)
+			continue
+		}
+		if f.Action == nil || f.Action.Label != orig.Action.Label {
+			t.Errorf("filter %q: label got %q, want %q", orig.Name, f.Action.Label, orig.Action.Label)
 		}
 	}
 }

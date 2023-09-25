@@ -85,6 +85,21 @@ grc gmail --force cfg/example-gmail.yaml
 
 ## YAML — Atom format
 
+### Filter fields
+
+| Field        | Type    | Description                            |
+|--------------|---------|----------------------------------------|
+| `name`       | string  | Filter name (becomes entry title)      |
+| `expression` | string  | Gmail search expression                |
+| `criteria`   | object  | Structured Gmail criteria              |
+| `action`     | object  | **Required.** Must include `label`     |
+| `category`   | object  | Atom category (term, scheme, label)    |
+| `author`     | object  | Atom author (name, email, uri)         |
+| `properties` | array   | Key-value pairs in entry summary       |
+
+**Important**: every filter must specify `action.label` — the destination folder (Gmail label).
+Filters are sorted alphabetically by this label in the generated output.
+
 ```yaml
 defaults:
   author:

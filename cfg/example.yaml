@@ -13,6 +13,8 @@ filters:
     category:
       term: newsletter
       label: Newsletters
+    action:
+      label: Newsletters
     author:
       name: Newsletter Bot
       email: newsletter@example.com
@@ -21,6 +23,8 @@ filters:
     expression: subject:(support || help || ticket)
     category:
       term: support
+      label: Support Tickets
+    action:
       label: Support Tickets
     properties:
       - name: priority
@@ -31,6 +35,8 @@ filters:
     category:
       term: internal
       label: Internal Notices
+    action:
+      label: Internal Notices
     author:
       name: Internal Comms
       email: notices@internal.example.com
@@ -40,6 +46,8 @@ filters:
     category:
       term: clients
       label: Client Communications
+    action:
+      label: Client Communications
     properties:
       - name: account
         value: enterprise
@@ -48,6 +56,8 @@ filters:
     expression: subject:(invoice || payment || receipt || billing)
     category:
       term: financial
+      label: Financial Documents
+    action:
       label: Financial Documents
     properties:
       - name: sensitive
@@ -59,4 +69,6 @@ filters:
     expression: subject:(viagra || lottery || free-money || click-here)
     category:
       term: spam
+      label: Spam Messages
+    action:
       label: Spam Messages
