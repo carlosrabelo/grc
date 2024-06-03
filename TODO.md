@@ -12,7 +12,7 @@
 
 ## Phase 03 — Test utilities
 
-- [ ] Create `grc/internal/testutils/testutils.go` with `CreateTempYAMLFile()`, `CreateTempFile()`, `CleanupFile()`, `BoolPtr()`
+- [x] Create `grc/internal/testutils/testutils.go` with `CreateTempYAMLFile()`, `CreateTempFile()`, `CleanupFile()`, `BoolPtr()`
 
 ## Phase 04 — YAML validation
 
