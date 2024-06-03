@@ -2,6 +2,19 @@ package types
 
 import (
 	"encoding/xml"
+	"regexp"
+)
+
+const (
+	AtomNS    = "http://www.w3.org/2005/Atom"
+	AppsNS    = "http://www.w3.org/2007/app"
+	FeedID    = "urn:uuid:"
+	XMLHeader = xml.Header
+)
+
+var (
+	EmailRegex  = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+	DomainRegex = regexp.MustCompile(`^[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 )
 
 type FiltersConfig struct {
