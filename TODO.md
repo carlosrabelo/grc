@@ -2,7 +2,7 @@
 
 ## Phase 01 — Project initialization
 
-- [ ] `go mod init github.com/carlosrabelo/grc`
+- [x] `go mod init github.com/carlosrabelo/grc`
 
 ## Phase 02 — Domain types
 
