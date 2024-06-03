@@ -17,7 +17,7 @@
 ## Phase 04 — YAML validation
 
 - [x] Create `grc/internal/validate/validate.go` with `.yaml`/`.yml` extension check, YAML parsing (`KnownFields(true)`), author validation, filter validation, email/domain validation
-- [ ] Create `grc/internal/validate/validate_test.go` with tests for all validation paths
+- [x] Create `grc/internal/validate/validate_test.go` with tests for all validation paths
 - [ ] `go get gopkg.in/yaml.v3` and `go mod tidy`
 
 ## Phase 05 — Config loading
