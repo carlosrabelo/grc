@@ -6,7 +6,7 @@
 
 ## Phase 02 — Domain types
 
-- [ ] Create `grc/pkg/types/types.go` with structs `Filter`, `Feed`, `Entry`, `Category`, `Property`, `FiltersConfig`, `Author`, `Defaults`
+- [x] Create `grc/pkg/types/types.go` with structs `Filter`, `Feed`, `Entry`, `Category`, `Property`, `FiltersConfig`, `Author`, `Defaults`
 - [ ] Define XML namespace constants (`AtomNS`, `AppsNS`), email/domain regexes, `FeedID`, `XMLHeader`
 - [ ] `go fmt ./...` and `go vet ./...`
 
