@@ -3,6 +3,7 @@ package validate
 import (
 	"testing"
 
+	"github.com/carlosrabelo/grc/grc/internal/testutils"
 	"github.com/carlosrabelo/grc/grc/pkg/types"
 )
 
@@ -160,5 +161,97 @@ func TestConfig_InvalidDefaultsAuthor(t *testing.T) {
 	}
 	if err := Config(cfg); err == nil {
 		t.Fatal("expected error for invalid defaults author")
+	}
+}
+
+func TestYAML_Valid(t *testing.T) {
+	yaml := `
+filters:
+  - name: newsletter
+    expression: subject:newsletter
+    author:
+      name: News Bot
+      email: news@example.com
+`
+	cfg, err := YAML([]byte(yaml))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Filters) != 1 {
+		t.Fatalf("expected 1 filter, got %d", len(cfg.Filters))
+	}
+	if cfg.Filters[0].Name != "newsletter" {
+		t.Errorf("got name %q", cfg.Filters[0].Name)
+	}
+}
+
+func TestYAML_UnknownField(t *testing.T) {
+	yaml := `
+filters:
+  - name: test
+    expression: x
+    unknown_field: true
+`
+	_, err := YAML([]byte(yaml))
+	if err == nil {
+		t.Fatal("expected error for unknown field")
+	}
+}
+
+func TestYAML_InvalidSyntax(t *testing.T) {
+	_, err := YAML([]byte("{invalid"))
+	if err == nil {
+		t.Fatal("expected error for invalid YAML")
+	}
+}
+
+func TestConfigFile_Valid(t *testing.T) {
+	content := "filters:\n  - name: test\n    expression: x\n"
+	path, err := testutils.CreateTempYAMLFile("", content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testutils.CleanupFile(path)
+
+	cfg, err := ConfigFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Filters) != 1 {
+		t.Fatalf("expected 1 filter, got %d", len(cfg.Filters))
+	}
+}
+
+func TestConfigFile_BadExtension(t *testing.T) {
+	path, err := testutils.CreateTempFile("", "*.json", "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testutils.CleanupFile(path)
+
+	_, err = ConfigFile(path)
+	if err == nil {
+		t.Fatal("expected error for bad extension")
+	}
+}
+
+func TestConfigFile_NotFound(t *testing.T) {
+	_, err := ConfigFile("/nonexistent/path/config.yaml")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestConfigFile_UnknownField(t *testing.T) {
+	content := "filters:\n  - name: test\n    expression: x\n    bogus: true\n"
+	path, err := testutils.CreateTempYAMLFile("", content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testutils.CleanupFile(path)
+
+	_, err = ConfigFile(path)
+	if err == nil {
+		t.Fatal("expected error for unknown field")
 	}
 }

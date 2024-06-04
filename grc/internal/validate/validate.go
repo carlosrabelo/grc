@@ -2,8 +2,11 @@ package validate
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/carlosrabelo/grc/grc/pkg/types"
 )
@@ -14,6 +17,31 @@ func Extension(path string) error {
 		return fmt.Errorf("invalid extension %q, expected .yaml or .yml", ext)
 	}
 	return nil
+}
+
+func YAML(content []byte) (*types.FiltersConfig, error) {
+	var cfg types.FiltersConfig
+	decoder := yaml.NewDecoder(strings.NewReader(string(content)))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("YAML parse error: %w", err)
+	}
+	return &cfg, nil
+}
+
+func ConfigFile(path string) (*types.FiltersConfig, error) {
+	if err := Extension(path); err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading file: %w", err)
+	}
+	cfg, err := YAML(data)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }
 
 func Author(a *types.Author) error {
