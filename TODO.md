@@ -28,7 +28,7 @@
 ## Phase 06 — Atom XML feed generation
 
 - [x] Create `grc/internal/generate/generate.go` with `GenerateFeed()`, `createBaseFeed()`, `createFeedEntry()`, `buildFilterProperties()`, `applyDefaults()`
-- [ ] Create `grc/internal/generate/generate_test.go` with tests for feed structure, defaults, explicit booleans
+- [x] Create `grc/internal/generate/generate_test.go` with tests for feed structure, defaults, explicit booleans
 
 ## Phase 07 — XML persistence
 
