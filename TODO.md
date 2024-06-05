@@ -33,7 +33,7 @@
 ## Phase 07 — XML persistence
 
 - [x] Create `grc/internal/save/save.go` with `SaveXML()`, `validateFileOverwrite()`, `writeXMLFile()`, `ensureXMLExtension()`
-- [ ] Create `grc/internal/save/save_test.go` with tests for overwrite protection and force flag
+- [x] Create `grc/internal/save/save_test.go` with tests for overwrite protection and force flag
 
 ## Phase 08 — Main CLI
 
