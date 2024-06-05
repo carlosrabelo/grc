@@ -43,7 +43,7 @@
 
 ## Phase 09 — Example YAML
 
-- [ ] Create example YAML config with sample filters (newsletter, support, internal notices, clients, financial, spam)
+- [x] Create example YAML config with sample filters (newsletter, support, internal notices, clients, financial, spam)
 
 ## Phase 10 — Documentation
 
