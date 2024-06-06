@@ -60,21 +60,21 @@ func TestAuthor_Nil(t *testing.T) {
 }
 
 func TestFilter_Valid(t *testing.T) {
-	err := Filter(&types.Filter{Name: "test", Expression: "subject:hello"})
+	err := Filter(&types.Filter{Name: "test", Expression: "subject:hello", Action: &types.GmailAction{Label: "Inbox"}})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
 
 func TestFilter_EmptyName(t *testing.T) {
-	err := Filter(&types.Filter{Name: "", Expression: "x"})
+	err := Filter(&types.Filter{Name: "", Expression: "x", Action: &types.GmailAction{Label: "Inbox"}})
 	if err == nil {
 		t.Fatal("expected error for empty name")
 	}
 }
 
 func TestFilter_EmptyExpression(t *testing.T) {
-	err := Filter(&types.Filter{Name: "test", Expression: ""})
+	err := Filter(&types.Filter{Name: "test", Expression: "", Action: &types.GmailAction{Label: "Inbox"}})
 	if err == nil {
 		t.Fatal("expected error for empty expression (no criteria either)")
 	}
@@ -84,6 +84,7 @@ func TestFilter_InvalidAuthor(t *testing.T) {
 	err := Filter(&types.Filter{
 		Name:       "test",
 		Expression: "x",
+		Action:     &types.GmailAction{Label: "Inbox"},
 		Author:     &types.Author{Name: "", Email: "bad"},
 	})
 	if err == nil {
@@ -124,8 +125,8 @@ func TestDomain_Invalid(t *testing.T) {
 func TestConfig_Valid(t *testing.T) {
 	cfg := &types.FiltersConfig{
 		Filters: []types.Filter{
-			{Name: "a", Expression: "x"},
-			{Name: "b", Expression: "y"},
+			{Name: "a", Expression: "x", Action: &types.GmailAction{Label: "Inbox"}},
+			{Name: "b", Expression: "y", Action: &types.GmailAction{Label: "Inbox"}},
 		},
 	}
 	if err := Config(cfg); err != nil {
@@ -142,7 +143,7 @@ func TestConfig_Nil(t *testing.T) {
 func TestConfig_InvalidFilter(t *testing.T) {
 	cfg := &types.FiltersConfig{
 		Filters: []types.Filter{
-			{Name: "", Expression: "x"},
+			{Name: "", Expression: "x", Action: &types.GmailAction{Label: "Inbox"}},
 		},
 	}
 	if err := Config(cfg); err == nil {
@@ -153,7 +154,7 @@ func TestConfig_InvalidFilter(t *testing.T) {
 func TestConfig_InvalidDefaultsAuthor(t *testing.T) {
 	cfg := &types.FiltersConfig{
 		Filters: []types.Filter{
-			{Name: "a", Expression: "x"},
+			{Name: "a", Expression: "x", Action: &types.GmailAction{Label: "Inbox"}},
 		},
 		Defaults: &types.Defaults{
 			Author: &types.Author{Name: "", Email: ""},
@@ -253,5 +254,37 @@ func TestConfigFile_UnknownField(t *testing.T) {
 	_, err = ConfigFile(path)
 	if err == nil {
 		t.Fatal("expected error for unknown field")
+	}
+}
+
+func TestFilter_MissingAction(t *testing.T) {
+	err := Filter(&types.Filter{
+		Name:       "test",
+		Expression: "subject:hello",
+	})
+	if err == nil {
+		t.Fatal("expected error for filter without action")
+	}
+}
+
+func TestFilter_MissingLabel(t *testing.T) {
+	err := Filter(&types.Filter{
+		Name:       "test",
+		Expression: "subject:hello",
+		Action:     &types.GmailAction{},
+	})
+	if err == nil {
+		t.Fatal("expected error for filter without action.label")
+	}
+}
+
+func TestFilter_EmptyLabel(t *testing.T) {
+	err := Filter(&types.Filter{
+		Name:       "test",
+		Expression: "subject:hello",
+		Action:     &types.GmailAction{Label: "   "},
+	})
+	if err == nil {
+		t.Fatal("expected error for whitespace-only action.label")
 	}
 }

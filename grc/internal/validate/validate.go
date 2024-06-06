@@ -64,6 +64,9 @@ func Filter(f *types.Filter) error {
 	if strings.TrimSpace(f.Expression) == "" {
 		return fmt.Errorf("filter %q: must have either expression or criteria", f.Name)
 	}
+	if f.Action == nil || strings.TrimSpace(f.Action.Label) == "" {
+		return fmt.Errorf("filter %q: action.label is required (destination folder)", f.Name)
+	}
 	if f.Author != nil {
 		if err := Author(f.Author); err != nil {
 			return fmt.Errorf("filter %q: %w", f.Name, err)

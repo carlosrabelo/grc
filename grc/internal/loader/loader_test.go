@@ -7,7 +7,7 @@ import (
 )
 
 func TestLoadConfig_Valid(t *testing.T) {
-	content := "filters:\n  - name: newsletter\n    expression: subject:newsletter\n"
+	content := "filters:\n  - name: newsletter\n    expression: subject:newsletter\n    action:\n      label: Newsletters\n"
 	path, err := testutils.CreateTempYAMLFile("", content)
 	if err != nil {
 		t.Fatal(err)
@@ -27,7 +27,7 @@ func TestLoadConfig_Valid(t *testing.T) {
 }
 
 func TestLoadConfig_MultipleFilters(t *testing.T) {
-	content := "filters:\n  - name: a\n    expression: x\n  - name: b\n    expression: y\n"
+	content := "filters:\n  - name: a\n    expression: x\n    action:\n      label: Inbox\n  - name: b\n    expression: y\n    action:\n      label: Inbox\n"
 	path, err := testutils.CreateTempYAMLFile("", content)
 	if err != nil {
 		t.Fatal(err)
@@ -47,6 +47,8 @@ func TestLoadConfig_WithDefaults(t *testing.T) {
 	content := `filters:
   - name: test
     expression: x
+    action:
+      label: Inbox
 defaults:
   author:
     name: Default Author
@@ -71,7 +73,7 @@ defaults:
 }
 
 func TestLoadConfig_WithAuthor(t *testing.T) {
-	content := "filters:\n  - name: test\n    expression: x\n    author:\n      name: Author\n      email: author@example.com\n"
+	content := "filters:\n  - name: test\n    expression: x\n    action:\n      label: Inbox\n    author:\n      name: Author\n      email: author@example.com\n"
 	path, err := testutils.CreateTempYAMLFile("", content)
 	if err != nil {
 		t.Fatal(err)
@@ -121,7 +123,7 @@ func TestLoadConfig_InvalidYAML(t *testing.T) {
 }
 
 func TestLoadConfig_UnknownField(t *testing.T) {
-	content := "filters:\n  - name: test\n    expression: x\n    bogus: true\n"
+	content := "filters:\n  - name: test\n    expression: x\n    action:\n      label: Inbox\n    bogus: true\n"
 	path, err := testutils.CreateTempYAMLFile("", content)
 	if err != nil {
 		t.Fatal(err)
@@ -135,7 +137,7 @@ func TestLoadConfig_UnknownField(t *testing.T) {
 }
 
 func TestLoadConfig_MissingFilterName(t *testing.T) {
-	content := "filters:\n  - expression: x\n"
+	content := "filters:\n  - expression: x\n    action:\n      label: Inbox\n"
 	path, err := testutils.CreateTempYAMLFile("", content)
 	if err != nil {
 		t.Fatal(err)
@@ -149,7 +151,7 @@ func TestLoadConfig_MissingFilterName(t *testing.T) {
 }
 
 func TestLoadConfig_MissingExpression(t *testing.T) {
-	content := "filters:\n  - name: test\n"
+	content := "filters:\n  - name: test\n    action:\n      label: Inbox\n"
 	path, err := testutils.CreateTempYAMLFile("", content)
 	if err != nil {
 		t.Fatal(err)
@@ -162,8 +164,22 @@ func TestLoadConfig_MissingExpression(t *testing.T) {
 	}
 }
 
+func TestLoadConfig_MissingLabel(t *testing.T) {
+	content := "filters:\n  - name: test\n    expression: x\n"
+	path, err := testutils.CreateTempYAMLFile("", content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testutils.CleanupFile(path)
+
+	_, err = LoadConfig(path)
+	if err == nil {
+		t.Fatal("expected error for missing action.label")
+	}
+}
+
 func TestLoadConfig_InvalidAuthorEmail(t *testing.T) {
-	content := "filters:\n  - name: test\n    expression: x\n    author:\n      name: Author\n      email: not-an-email\n"
+	content := "filters:\n  - name: test\n    expression: x\n    action:\n      label: Inbox\n    author:\n      name: Author\n      email: not-an-email\n"
 	path, err := testutils.CreateTempYAMLFile("", content)
 	if err != nil {
 		t.Fatal(err)

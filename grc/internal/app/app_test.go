@@ -90,7 +90,7 @@ func TestRun_VersionHelp(t *testing.T) {
 }
 
 func TestRun_AtomBasic(t *testing.T) {
-	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n")
+	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n    action:\n      label: Inbox\n")
 	output := filepath.Join(t.TempDir(), "out.xml")
 
 	code := Run([]string{"atom", input, output})
@@ -101,7 +101,7 @@ func TestRun_AtomBasic(t *testing.T) {
 }
 
 func TestRun_AtomDefaultOutput(t *testing.T) {
-	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n")
+	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n    action:\n      label: Inbox\n")
 	expected := strings.TrimSuffix(input, filepath.Ext(input)) + ".xml"
 	t.Cleanup(func() { _ = os.Remove(expected) })
 
@@ -113,7 +113,7 @@ func TestRun_AtomDefaultOutput(t *testing.T) {
 }
 
 func TestRun_AtomOutputFlag(t *testing.T) {
-	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n")
+	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n    action:\n      label: Inbox\n")
 	output := filepath.Join(t.TempDir(), "flag.xml")
 
 	code := Run([]string{"atom", "--output", output, input})
@@ -124,7 +124,7 @@ func TestRun_AtomOutputFlag(t *testing.T) {
 }
 
 func TestRun_AtomVerbose(t *testing.T) {
-	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n")
+	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n    action:\n      label: Inbox\n")
 	output := filepath.Join(t.TempDir(), "verbose.xml")
 
 	code := Run([]string{"atom", "--verbose", input, output})
@@ -134,7 +134,7 @@ func TestRun_AtomVerbose(t *testing.T) {
 }
 
 func TestRun_AtomMultipleFilters(t *testing.T) {
-	input := writeTestYAML(t, "filters:\n  - name: a\n    expression: x\n  - name: b\n    expression: y\n")
+	input := writeTestYAML(t, "filters:\n  - name: a\n    expression: x\n    action:\n      label: Inbox\n  - name: b\n    expression: y\n    action:\n      label: Inbox\n")
 	output := filepath.Join(t.TempDir(), "multi.xml")
 
 	code := Run([]string{"atom", input, output})
@@ -189,7 +189,7 @@ func TestRun_AtomUnknownFlag(t *testing.T) {
 }
 
 func TestRun_AtomOverwriteProtected(t *testing.T) {
-	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n")
+	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n    action:\n      label: Inbox\n")
 	output := filepath.Join(t.TempDir(), "prot.xml")
 
 	if code := Run([]string{"atom", input, output}); code != exitOK {
@@ -201,7 +201,7 @@ func TestRun_AtomOverwriteProtected(t *testing.T) {
 }
 
 func TestRun_AtomForce(t *testing.T) {
-	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n")
+	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: x\n    action:\n      label: Inbox\n")
 	output := filepath.Join(t.TempDir(), "force.xml")
 
 	if code := Run([]string{"atom", input, output}); code != exitOK {

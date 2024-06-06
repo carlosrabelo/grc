@@ -23,11 +23,19 @@ type FiltersConfig struct {
 }
 
 type Filter struct {
-	Name       string     `yaml:"name"`
-	Expression string     `yaml:"expression,omitempty"`
-	Category   *Category  `yaml:"category,omitempty"`
-	Properties []Property `yaml:"properties,omitempty"`
-	Author     *Author    `yaml:"author,omitempty"`
+	Name       string         `yaml:"name"`
+	Expression string         `yaml:"expression,omitempty"`
+	Category   *Category      `yaml:"category,omitempty"`
+	Properties []Property     `yaml:"properties,omitempty"`
+	Author     *Author        `yaml:"author,omitempty"`
+	Criteria   *GmailCriteria `yaml:"criteria,omitempty"`
+	Action     *GmailAction   `yaml:"action,omitempty"`
+}
+
+type GmailCriteria struct{}
+
+type GmailAction struct {
+	Label string `yaml:"label,omitempty"`
 }
 
 type Feed struct {
