@@ -53,7 +53,7 @@
 
 ## Phase 11 — Quality
 
-- [ ] `make fmt`, `make vet`, and `make quality` (fmt + vet + test)
+- [x] `make fmt`, `make vet`, and `make quality` (fmt + vet + test)
 
 ## Phase 12 — Gmail filter types
 
