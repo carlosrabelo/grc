@@ -31,6 +31,84 @@ func TestExtension(t *testing.T) {
 	}
 }
 
+func TestYAML_Valid(t *testing.T) {
+	yaml := `
+filters:
+  - name: newsletter
+    expression: subject:newsletter
+    author:
+      name: News Bot
+      email: news@example.com
+`
+	cfg, err := YAML([]byte(yaml))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Filters) != 1 {
+		t.Fatalf("expected 1 filter, got %d", len(cfg.Filters))
+	}
+	if cfg.Filters[0].Name != "newsletter" {
+		t.Errorf("got name %q", cfg.Filters[0].Name)
+	}
+}
+
+func TestYAML_UnknownField(t *testing.T) {
+	yaml := `
+filters:
+  - name: test
+    expression: x
+    unknown_field: true
+`
+	_, err := YAML([]byte(yaml))
+	if err == nil {
+		t.Fatal("expected error for unknown field")
+	}
+}
+
+func TestYAML_InvalidSyntax(t *testing.T) {
+	_, err := YAML([]byte("{invalid"))
+	if err == nil {
+		t.Fatal("expected error for invalid YAML")
+	}
+}
+
+func TestConfigFile_Valid(t *testing.T) {
+	content := "filters:\n  - name: test\n    expression: x\n"
+	path, err := testutils.CreateTempYAMLFile("", content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testutils.CleanupFile(path)
+
+	cfg, err := ConfigFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Filters) != 1 {
+		t.Fatalf("expected 1 filter, got %d", len(cfg.Filters))
+	}
+}
+
+func TestConfigFile_BadExtension(t *testing.T) {
+	path, err := testutils.CreateTempFile("", "*.json", "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testutils.CleanupFile(path)
+
+	_, err = ConfigFile(path)
+	if err == nil {
+		t.Fatal("expected error for bad extension")
+	}
+}
+
+func TestConfigFile_NotFound(t *testing.T) {
+	_, err := ConfigFile("/nonexistent/path/config.yaml")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
 func TestAuthor_Valid(t *testing.T) {
 	err := Author(&types.Author{Name: "John", Email: "john@example.com"})
 	if err != nil {
@@ -77,6 +155,110 @@ func TestFilter_EmptyExpression(t *testing.T) {
 	err := Filter(&types.Filter{Name: "test", Expression: "", Action: &types.GmailAction{Label: "Inbox"}})
 	if err == nil {
 		t.Fatal("expected error for empty expression (no criteria either)")
+	}
+}
+
+func TestFilter_WithCriteriaOnly(t *testing.T) {
+	err := Filter(&types.Filter{
+		Name: "test",
+		Criteria: &types.GmailCriteria{
+			From: "sender@example.com",
+		},
+		Action: &types.GmailAction{Label: "Inbox"},
+	})
+	if err != nil {
+		t.Errorf("expected no error for criteria filter, got %v", err)
+	}
+}
+
+func TestFilter_WithCriteriaAndAction(t *testing.T) {
+	archive := true
+	err := Filter(&types.Filter{
+		Name: "test",
+		Criteria: &types.GmailCriteria{
+			Subject: "newsletter",
+		},
+		Action: &types.GmailAction{
+			Archive: &archive,
+			Label:   "Newsletters",
+		},
+	})
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+}
+
+func TestFilter_EmptyCriteria(t *testing.T) {
+	err := Filter(&types.Filter{
+		Name:     "test",
+		Criteria: &types.GmailCriteria{},
+		Action:   &types.GmailAction{Label: "Inbox"},
+	})
+	if err == nil {
+		t.Fatal("expected error for empty criteria object")
+	}
+}
+
+func TestFilter_ExpressionAndCriteria(t *testing.T) {
+	err := Filter(&types.Filter{
+		Name:       "test",
+		Expression: "subject:hello",
+		Criteria: &types.GmailCriteria{
+			From: "sender@example.com",
+		},
+		Action: &types.GmailAction{Label: "Inbox"},
+	})
+	if err != nil {
+		t.Errorf("expected no error with both expression and criteria, got %v", err)
+	}
+}
+
+func TestFilter_ActionNoCriteria(t *testing.T) {
+	archive := true
+	err := Filter(&types.Filter{
+		Name: "test",
+		Action: &types.GmailAction{
+			Archive: &archive,
+			Label:   "Inbox",
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for action without expression or criteria")
+	}
+}
+
+func TestFilter_MissingAction(t *testing.T) {
+	err := Filter(&types.Filter{
+		Name:       "test",
+		Expression: "subject:hello",
+	})
+	if err == nil {
+		t.Fatal("expected error for filter without action")
+	}
+}
+
+func TestFilter_MissingLabel(t *testing.T) {
+	archive := true
+	err := Filter(&types.Filter{
+		Name:       "test",
+		Expression: "subject:hello",
+		Action: &types.GmailAction{
+			Archive: &archive,
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for filter without action.label")
+	}
+}
+
+func TestFilter_EmptyLabel(t *testing.T) {
+	err := Filter(&types.Filter{
+		Name:       "test",
+		Expression: "subject:hello",
+		Action:     &types.GmailAction{Label: "   "},
+	})
+	if err == nil {
+		t.Fatal("expected error for whitespace-only action.label")
 	}
 }
 
@@ -165,84 +347,6 @@ func TestConfig_InvalidDefaultsAuthor(t *testing.T) {
 	}
 }
 
-func TestYAML_Valid(t *testing.T) {
-	yaml := `
-filters:
-  - name: newsletter
-    expression: subject:newsletter
-    author:
-      name: News Bot
-      email: news@example.com
-`
-	cfg, err := YAML([]byte(yaml))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(cfg.Filters) != 1 {
-		t.Fatalf("expected 1 filter, got %d", len(cfg.Filters))
-	}
-	if cfg.Filters[0].Name != "newsletter" {
-		t.Errorf("got name %q", cfg.Filters[0].Name)
-	}
-}
-
-func TestYAML_UnknownField(t *testing.T) {
-	yaml := `
-filters:
-  - name: test
-    expression: x
-    unknown_field: true
-`
-	_, err := YAML([]byte(yaml))
-	if err == nil {
-		t.Fatal("expected error for unknown field")
-	}
-}
-
-func TestYAML_InvalidSyntax(t *testing.T) {
-	_, err := YAML([]byte("{invalid"))
-	if err == nil {
-		t.Fatal("expected error for invalid YAML")
-	}
-}
-
-func TestConfigFile_Valid(t *testing.T) {
-	content := "filters:\n  - name: test\n    expression: x\n"
-	path, err := testutils.CreateTempYAMLFile("", content)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testutils.CleanupFile(path)
-
-	cfg, err := ConfigFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(cfg.Filters) != 1 {
-		t.Fatalf("expected 1 filter, got %d", len(cfg.Filters))
-	}
-}
-
-func TestConfigFile_BadExtension(t *testing.T) {
-	path, err := testutils.CreateTempFile("", "*.json", "{}")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testutils.CleanupFile(path)
-
-	_, err = ConfigFile(path)
-	if err == nil {
-		t.Fatal("expected error for bad extension")
-	}
-}
-
-func TestConfigFile_NotFound(t *testing.T) {
-	_, err := ConfigFile("/nonexistent/path/config.yaml")
-	if err == nil {
-		t.Fatal("expected error")
-	}
-}
-
 func TestConfigFile_UnknownField(t *testing.T) {
 	content := "filters:\n  - name: test\n    expression: x\n    bogus: true\n"
 	path, err := testutils.CreateTempYAMLFile("", content)
@@ -254,37 +358,5 @@ func TestConfigFile_UnknownField(t *testing.T) {
 	_, err = ConfigFile(path)
 	if err == nil {
 		t.Fatal("expected error for unknown field")
-	}
-}
-
-func TestFilter_MissingAction(t *testing.T) {
-	err := Filter(&types.Filter{
-		Name:       "test",
-		Expression: "subject:hello",
-	})
-	if err == nil {
-		t.Fatal("expected error for filter without action")
-	}
-}
-
-func TestFilter_MissingLabel(t *testing.T) {
-	err := Filter(&types.Filter{
-		Name:       "test",
-		Expression: "subject:hello",
-		Action:     &types.GmailAction{},
-	})
-	if err == nil {
-		t.Fatal("expected error for filter without action.label")
-	}
-}
-
-func TestFilter_EmptyLabel(t *testing.T) {
-	err := Filter(&types.Filter{
-		Name:       "test",
-		Expression: "subject:hello",
-		Action:     &types.GmailAction{Label: "   "},
-	})
-	if err == nil {
-		t.Fatal("expected error for whitespace-only action.label")
 	}
 }

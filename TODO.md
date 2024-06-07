@@ -58,7 +58,7 @@
 ## Phase 12 — Gmail filter types
 
 - [x] Extend `Filter` with `Criteria *GmailCriteria` and `Action *GmailAction`
-- [ ] Define structs `GmailCriteria` (From, To, Subject, HasTheWord, etc.) and `GmailAction` (Archive, MarkRead, Star, Delete, NeverSpam, AlwaysSpam, Label, Forward, SmartLabel, Category)
+- [x] Define structs `GmailCriteria` (From, To, Subject, HasTheWord, etc.) and `GmailAction` (Archive, MarkRead, Star, Delete, NeverSpam, AlwaysSpam, Label, Forward, SmartLabel, Category)
 - [ ] Keep backward compatibility: existing `expression` field continues to work
 
 ## Phase 13 — Expression parser

@@ -148,3 +148,66 @@ func TestDefaults(t *testing.T) {
 		t.Errorf("got %q, want %q", d.Author.Name, "Default Author")
 	}
 }
+
+func TestGmailCriteriaDefaults(t *testing.T) {
+	c := GmailCriteria{}
+	if c.From != "" || c.To != "" || c.Subject != "" {
+		t.Error("expected zero values for empty criteria")
+	}
+}
+
+func TestGmailCriteriaAllFields(t *testing.T) {
+	c := GmailCriteria{
+		From:       "sender@example.com",
+		To:         "me@example.com",
+		Subject:    "hello",
+		HasTheWord: "important",
+	}
+	if c.From != "sender@example.com" {
+		t.Errorf("got %q", c.From)
+	}
+}
+
+func TestGmailActionDefaults(t *testing.T) {
+	a := GmailAction{}
+	if a.Archive != nil || a.MarkRead != nil {
+		t.Error("expected nil for unset actions")
+	}
+}
+
+func TestGmailActionFields(t *testing.T) {
+	archive := true
+	a := GmailAction{
+		Archive: &archive,
+		Label:   "Important",
+		Forward: "backup@example.com",
+	}
+	if a.Archive == nil || *a.Archive != true {
+		t.Error("expected archive true")
+	}
+	if a.Label != "Important" {
+		t.Errorf("got label %q", a.Label)
+	}
+}
+
+func TestFilterWithCriteria(t *testing.T) {
+	f := Filter{
+		Name: "test",
+		Criteria: &GmailCriteria{
+			From:    "sender@example.com",
+			Subject: "newsletter",
+		},
+		Action: &GmailAction{
+			Label: "Newsletters",
+		},
+	}
+	if f.Name != "test" {
+		t.Errorf("got name %q", f.Name)
+	}
+	if f.Criteria.From != "sender@example.com" {
+		t.Errorf("got from %q", f.Criteria.From)
+	}
+	if f.Action.Label != "Newsletters" {
+		t.Errorf("got label %q", f.Action.Label)
+	}
+}

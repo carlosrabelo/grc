@@ -61,7 +61,19 @@ func Filter(f *types.Filter) error {
 	if strings.TrimSpace(f.Name) == "" {
 		return fmt.Errorf("filter name is required")
 	}
-	if strings.TrimSpace(f.Expression) == "" {
+	hasExpression := strings.TrimSpace(f.Expression) != ""
+	hasCriteria := f.Criteria != nil && (f.Criteria.From != "" || f.Criteria.To != "" ||
+		f.Criteria.Subject != "" || f.Criteria.HasTheWord != "" ||
+		f.Criteria.HasAttachment != nil || f.Criteria.Is != "" ||
+		f.Criteria.In != "" || f.Criteria.Cc != "" ||
+		f.Criteria.Bcc != "" || f.Criteria.DeliveredTo != "" ||
+		f.Criteria.List != "" || f.Criteria.Filename != "" ||
+		f.Criteria.After != "" || f.Criteria.Before != "" ||
+		f.Criteria.OlderThan != "" || f.Criteria.NewerThan != "" ||
+		f.Criteria.Size != "" || f.Criteria.Larger != "" ||
+		f.Criteria.Smaller != "" || f.Criteria.Label != "" ||
+		f.Criteria.Category != "")
+	if !hasExpression && !hasCriteria {
 		return fmt.Errorf("filter %q: must have either expression or criteria", f.Name)
 	}
 	if f.Action == nil || strings.TrimSpace(f.Action.Label) == "" {
