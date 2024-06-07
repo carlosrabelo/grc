@@ -65,7 +65,7 @@
 
 - [x] Create `grc/internal/parser/parser.go` that parses Gmail search expressions into structured `Criteria` + `Action`
 - [x] Support operators: `AND`, `OR`, `-` (negation), `from:`, `to:`, `subject:`, `has:`, `filename:`, `list:`, `after:`, `before:`, `older_than:`, `newer_than:`, `size:`, `larger:`, `smaller:`, `in:`, `is:`, `label:`, `cc:`, `bcc:`, `deliveredto:`
-- [ ] Handle quoted values and parenthesized groups
+- [x] Handle quoted values and parenthesized groups
 - [ ] Create `grc/internal/parser/parser_test.go` with table-driven tests for all operators
 
 ## Phase 14 — Gmail XML generation
