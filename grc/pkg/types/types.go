@@ -3,6 +3,8 @@ package types
 import (
 	"encoding/xml"
 	"regexp"
+	"sort"
+	"strings"
 )
 
 const (
@@ -108,4 +110,25 @@ type Author struct {
 type Defaults struct {
 	Author   *Author   `yaml:"author,omitempty"`
 	Category *Category `yaml:"category,omitempty"`
+}
+
+// FiltersByLabel returns a copy of filters sorted alphabetically by the
+// destination label (action.label), case-insensitive and stable. The input
+// slice is not modified. Callers should ensure every filter has a non-empty
+// action.label via validate.Filter before calling.
+func FiltersByLabel(filters []Filter) []Filter {
+	out := make([]Filter, len(filters))
+	copy(out, filters)
+	sort.SliceStable(out, func(i, j int) bool {
+		li, lj := labelOrEmpty(out[i]), labelOrEmpty(out[j])
+		return strings.ToLower(li) < strings.ToLower(lj)
+	})
+	return out
+}
+
+func labelOrEmpty(f Filter) string {
+	if f.Action == nil {
+		return ""
+	}
+	return f.Action.Label
 }

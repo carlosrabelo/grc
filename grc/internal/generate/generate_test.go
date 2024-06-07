@@ -332,3 +332,28 @@ func TestGenerateFeed_EmptyConfig(t *testing.T) {
 		t.Errorf("expected 0 entries, got %d", len(feed.Entries))
 	}
 }
+
+func TestGenerateFeed_SortsByActionLabel(t *testing.T) {
+	cfg := &types.FiltersConfig{
+		Filters: []types.Filter{
+			{Name: "zeta", Expression: "x", Action: &types.GmailAction{Label: "Zebra"}},
+			{Name: "alpha", Expression: "x", Action: &types.GmailAction{Label: "Apple"}},
+			{Name: "mid", Expression: "x", Action: &types.GmailAction{Label: "Mango"}},
+		},
+	}
+
+	feed, err := GenerateFeed(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(feed.Entries) != 3 {
+		t.Fatalf("expected 3 entries, got %d", len(feed.Entries))
+	}
+	wantOrder := []string{"alpha", "mid", "zeta"}
+	for i, want := range wantOrder {
+		if feed.Entries[i].Title != want {
+			t.Errorf("entry %d: got %q, want %q (not sorted by label)", i, feed.Entries[i].Title, want)
+		}
+	}
+}

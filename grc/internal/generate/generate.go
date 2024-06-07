@@ -10,8 +10,9 @@ import (
 
 func GenerateFeed(cfg *types.FiltersConfig) (*types.Feed, error) {
 	feed := createBaseFeed()
-	for i := range cfg.Filters {
-		feed.Entries = append(feed.Entries, *createFeedEntry(&cfg.Filters[i], cfg.Defaults))
+	ordered := types.FiltersByLabel(cfg.Filters)
+	for i := range ordered {
+		feed.Entries = append(feed.Entries, *createFeedEntry(&ordered[i], cfg.Defaults))
 	}
 	return feed, nil
 }
