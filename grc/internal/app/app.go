@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/carlosrabelo/grc/grc/internal/generate"
+	"github.com/carlosrabelo/grc/grc/internal/gmail"
 	"github.com/carlosrabelo/grc/grc/internal/loader"
 	"github.com/carlosrabelo/grc/grc/internal/save"
 )
@@ -124,8 +125,7 @@ func Run(args []string) int {
 	case "atom":
 		return runGenerate(rest, "atom", atomHelp)
 	case "gmail":
-		fmt.Fprintln(os.Stderr, "Error: gmail format not implemented")
-		return exitError
+		return runGenerate(rest, "gmail", gmailHelp)
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unknown command %q\n\n", cmd)
 		fmt.Fprint(os.Stderr, rootHelp)
@@ -188,16 +188,26 @@ func runGenerate(args []string, mode, help string) int {
 		return fail("Error: %v", err)
 	}
 
-	logger("Generating Atom feed with %d filters", len(cfg.Filters))
-	feed, ferr := generate.GenerateFeed(cfg)
-	if ferr != nil {
-		return fail("Error generating feed: %v", ferr)
+	var data []byte
+	switch mode {
+	case "atom":
+		logger("Generating Atom feed with %d filters", len(cfg.Filters))
+		feed, ferr := generate.GenerateFeed(cfg)
+		if ferr != nil {
+			return fail("Error generating feed: %v", ferr)
+		}
+		data, err = xml.MarshalIndent(feed, "", "  ")
+		if err != nil {
+			return fail("Error marshaling XML: %v", err)
+		}
+		data = append([]byte(xml.Header), data...)
+	case "gmail":
+		logger("Generating Gmail filter XML with %d filters", len(cfg.Filters))
+		data, err = gmail.GenerateGmailXML(cfg)
+		if err != nil {
+			return fail("Error generating Gmail XML: %v", err)
+		}
 	}
-	data, err := xml.MarshalIndent(feed, "", "  ")
-	if err != nil {
-		return fail("Error marshaling XML: %v", err)
-	}
-	data = append([]byte(xml.Header), data...)
 
 	logger("Saving to %s", output)
 	if _, err := save.SaveFile(data, output, ".xml", opts.force); err != nil {
