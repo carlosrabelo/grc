@@ -86,7 +86,7 @@
 ## Phase 16 — Gmail filter import (reverse)
 
 - [x] Create `grc/internal/importer/importer.go` that reads Gmail export XML (Google Takeout) and produces `[]Filter`
-- [ ] Map `apps:property` criteria entries back to `GmailCriteria`
+- [x] Map `apps:property` criteria entries back to `GmailCriteria`
 - [ ] Map `apps:property` action entries back to `GmailAction`
 - [ ] Add `--import` flag or `grc import <gmail.xml>` subcommand
 - [ ] Create `grc/internal/importer/importer_test.go` with roundtrip tests
