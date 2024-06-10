@@ -56,15 +56,6 @@ func TestRun_HelpCommand(t *testing.T) {
 	}
 }
 
-func TestRun_HelpForSubcommand(t *testing.T) {
-	for _, sub := range []string{"atom", "version", "help"} {
-		code := Run([]string{"help", sub})
-		if code != exitOK {
-			t.Fatalf("help %s: expected exit %d, got %d", sub, exitOK, code)
-		}
-	}
-}
-
 func TestRun_HelpUnknownSubcommand(t *testing.T) {
 	code := Run([]string{"help", "bogus"})
 	if code != exitUsage {
@@ -209,5 +200,64 @@ func TestRun_AtomForce(t *testing.T) {
 	}
 	if code := Run([]string{"atom", "--force", input, output}); code != exitOK {
 		t.Fatalf("expected exit %d with force, got %d", exitOK, code)
+	}
+}
+
+func TestRun_HelpForSubcommand(t *testing.T) {
+	for _, sub := range []string{"atom", "gmail", "version", "help"} {
+		code := Run([]string{"help", sub})
+		if code != exitOK {
+			t.Fatalf("help %s: expected exit %d, got %d", sub, exitOK, code)
+		}
+	}
+}
+
+func TestRun_GmailBasic(t *testing.T) {
+	input := writeTestYAML(t, "filters:\n  - name: test\n    criteria:\n      from: spam@example.com\n    action:\n      label: Spam\n      archive: true\n")
+	output := filepath.Join(t.TempDir(), "out.gmail.xml")
+
+	code := Run([]string{"gmail", input, output})
+	if code != exitOK {
+		t.Fatalf("expected exit %d, got %d", exitOK, code)
+	}
+	fileExists(t, output)
+}
+
+func TestRun_GmailDefaultOutput(t *testing.T) {
+	input := writeTestYAML(t, "filters:\n  - name: test\n    criteria:\n      from: a@b.com\n    action:\n      label: Inbox\n")
+	expected := strings.TrimSuffix(input, filepath.Ext(input)) + ".gmail.xml"
+	t.Cleanup(func() { _ = os.Remove(expected) })
+
+	code := Run([]string{"gmail", input})
+	if code != exitOK {
+		t.Fatalf("expected exit %d, got %d", exitOK, code)
+	}
+	fileExists(t, expected)
+}
+
+func TestRun_GmailExpressionFallback(t *testing.T) {
+	input := writeTestYAML(t, "filters:\n  - name: test\n    expression: subject:hello\n    action:\n      label: Inbox\n")
+	output := filepath.Join(t.TempDir(), "expr.xml")
+
+	code := Run([]string{"gmail", input, output})
+	if code != exitOK {
+		t.Fatalf("expected exit %d, got %d", exitOK, code)
+	}
+}
+
+func TestRun_GmailCriteriaAction(t *testing.T) {
+	input := writeTestYAML(t, "filters:\n  - name: support\n    criteria:\n      subject: help\n    action:\n      label: Support\n      archive: true\n")
+	output := filepath.Join(t.TempDir(), "support.xml")
+
+	code := Run([]string{"gmail", input, output})
+	if code != exitOK {
+		t.Fatalf("expected exit %d, got %d", exitOK, code)
+	}
+}
+
+func TestRun_GmailHelpFlag(t *testing.T) {
+	code := Run([]string{"gmail", "--help"})
+	if code != exitOK {
+		t.Fatalf("expected exit %d, got %d", exitOK, code)
 	}
 }
