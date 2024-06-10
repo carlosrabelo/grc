@@ -77,7 +77,7 @@
 
 ## Phase 15 — CLI `--format` flag
 
-- [ ] Add `--format atom|gmail` flag to CLI (default: `atom` for backward compatibility)
+- [x] Add `--format atom|gmail` flag to CLI (default: `atom` for backward compatibility)
 - [ ] Wire `--format gmail` to `gmail.GenerateGmailXML()` pipeline
 - [ ] Update `resolveOutputPath()` to use `.gmail.xml` extension for gmail format
 - [ ] Update help text and tests

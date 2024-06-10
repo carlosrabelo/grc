@@ -33,10 +33,11 @@ Usage:
 
 Commands:
   atom      Generate an Atom XML feed from a YAML config
+  gmail     Generate Gmail import XML from a YAML config
   help      Show help (use "grc help <command>" for details)
   version   Show version information
 
-Common flags (available on atom):
+Common flags (available on atom, gmail):
   --output PATH   Explicit output path (overrides the positional argument)
   --force         Overwrite an existing output file
   --verbose       Enable verbose logging
@@ -44,9 +45,11 @@ Common flags (available on atom):
 
 Default output paths:
   atom      <input>.xml          (cfg/x.yaml -> cfg/x.xml)
+  gmail     <input>.xml          (cfg/x.yaml -> cfg/x.xml)
 
 Examples:
   grc atom cfg/example.yaml
+  grc gmail cfg/example-gmail.yaml
 
 Run "grc help <command>" for command-specific help.
 `
@@ -69,6 +72,25 @@ Flags:
 Examples:
   grc atom cfg/example.yaml
   grc atom cfg/example.yaml --output /tmp/feed.xml --force
+`
+
+const gmailHelp = `Usage: grc gmail [flags] <input.yaml> [output]
+
+Generate Gmail-compatible import XML from a YAML configuration. The output
+can be imported via Gmail Settings > Filters > Import.
+
+Arguments:
+  input     YAML configuration file (.yaml or .yml). Required.
+  output    Output path. Default: <input>.xml.
+
+Flags:
+  --output PATH   Explicit output path (overrides the positional output)
+  --force         Overwrite an existing output file
+  --verbose       Enable verbose logging
+  -h, --help      Show this help message
+
+Examples:
+  grc gmail cfg/example-gmail.yaml
 `
 
 const versionHelp = `Usage: grc version
@@ -101,6 +123,9 @@ func Run(args []string) int {
 		return exitOK
 	case "atom":
 		return runGenerate(rest, "atom", atomHelp)
+	case "gmail":
+		fmt.Fprintln(os.Stderr, "Error: gmail format not implemented")
+		return exitError
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unknown command %q\n\n", cmd)
 		fmt.Fprint(os.Stderr, rootHelp)
@@ -116,6 +141,9 @@ func runHelp(args []string) int {
 	switch args[0] {
 	case "atom":
 		fmt.Print(atomHelp)
+		return exitOK
+	case "gmail":
+		fmt.Print(gmailHelp)
 		return exitOK
 	case "version":
 		fmt.Print(versionHelp)
