@@ -46,7 +46,7 @@ Common flags (available on atom, gmail):
 
 Default output paths:
   atom      <input>.xml          (cfg/x.yaml -> cfg/x.xml)
-  gmail     <input>.xml          (cfg/x.yaml -> cfg/x.xml)
+  gmail     <input>.gmail.xml    (cfg/x.yaml -> cfg/x.gmail.xml)
 
 Examples:
   grc atom cfg/example.yaml
@@ -82,7 +82,7 @@ can be imported via Gmail Settings > Filters > Import.
 
 Arguments:
   input     YAML configuration file (.yaml or .yml). Required.
-  output    Output path. Default: <input>.xml.
+  output    Output path. Default: <input>.gmail.xml.
 
 Flags:
   --output PATH   Explicit output path (overrides the positional output)
@@ -92,6 +92,7 @@ Flags:
 
 Examples:
   grc gmail cfg/example-gmail.yaml
+  grc gmail cfg/example-gmail.yaml -o filters.xml --force
 `
 
 const versionHelp = `Usage: grc version
@@ -252,6 +253,9 @@ func resolveOutput(input, positionalOutput, flagOutput, mode string) string {
 		return positionalOutput
 	}
 	base := strings.TrimSuffix(input, filepath.Ext(input))
+	if mode == "gmail" {
+		return base + ".gmail.xml"
+	}
 	return base + ".xml"
 }
 
