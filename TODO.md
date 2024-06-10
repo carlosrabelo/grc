@@ -71,7 +71,7 @@
 ## Phase 14 — Gmail XML generation
 
 - [x] Create `grc/internal/gmail/gmail.go` with `GenerateGmailXML()` that produces Gmail import XML (`apps:property` entries)
-- [ ] Map `GmailCriteria` fields to `apps:property` name/value pairs (from, to, subject, hasTheWord, hasAttachment, etc.)
+- [x] Map `GmailCriteria` fields to `apps:property` name/value pairs (from, to, subject, hasTheWord, hasAttachment, etc.)
 - [ ] Map `GmailAction` fields to `apps:property` actions (shouldArchive, shouldMarkAsRead, shouldStar, shouldDelete, etc.)
 - [ ] Create `grc/internal/gmail/gmail_test.go` with tests for all criteria/action combinations
 

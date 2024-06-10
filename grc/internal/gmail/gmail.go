@@ -3,6 +3,7 @@ package gmail
 import (
 	"encoding/xml"
 	"fmt"
+	"strconv"
 
 	"github.com/carlosrabelo/grc/grc/internal/parser"
 	"github.com/carlosrabelo/grc/grc/pkg/types"
@@ -71,7 +72,39 @@ func GenerateGmailXML(cfg *types.FiltersConfig) ([]byte, error) {
 }
 
 func criteriaProperties(c *types.GmailCriteria) []gmailProperty {
-	return nil
+	var props []gmailProperty
+	add := func(name, value string) {
+		if value != "" {
+			props = append(props, gmailProperty{Name: name, Value: value})
+		}
+	}
+	addBool := func(name string, val *bool) {
+		if val != nil {
+			props = append(props, gmailProperty{Name: name, Value: strconv.FormatBool(*val)})
+		}
+	}
+	add("from", c.From)
+	add("to", c.To)
+	add("subject", c.Subject)
+	add("hasTheWord", c.HasTheWord)
+	addBool("hasAttachment", c.HasAttachment)
+	add("is", c.Is)
+	add("in", c.In)
+	add("cc", c.Cc)
+	add("bcc", c.Bcc)
+	add("deliveredto", c.DeliveredTo)
+	add("list", c.List)
+	add("filename", c.Filename)
+	add("after", c.After)
+	add("before", c.Before)
+	add("olderThan", c.OlderThan)
+	add("newerThan", c.NewerThan)
+	add("size", c.Size)
+	add("larger", c.Larger)
+	add("smaller", c.Smaller)
+	add("label", c.Label)
+	add("category", c.Category)
+	return props
 }
 
 func actionProperties(a *types.GmailAction) []gmailProperty {
