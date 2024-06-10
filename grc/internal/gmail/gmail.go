@@ -108,5 +108,27 @@ func criteriaProperties(c *types.GmailCriteria) []gmailProperty {
 }
 
 func actionProperties(a *types.GmailAction) []gmailProperty {
-	return nil
+	var props []gmailProperty
+	add := func(name, value string) {
+		if value != "" {
+			props = append(props, gmailProperty{Name: name, Value: value})
+		}
+	}
+	addBool := func(name string, val *bool) {
+		if val != nil {
+			props = append(props, gmailProperty{Name: name, Value: strconv.FormatBool(*val)})
+		}
+	}
+	addBool("shouldArchive", a.Archive)
+	addBool("shouldMarkAsRead", a.MarkRead)
+	addBool("shouldStar", a.Star)
+	addBool("shouldDelete", a.Delete)
+	addBool("shouldNeverSpam", a.NeverSpam)
+	addBool("shouldAlwaysMarkAsSpam", a.AlwaysSpam)
+	add("forwardTo", a.Forward)
+	add("label", a.Label)
+	add("smartLabelToApply", a.SmartLabel)
+	add("category", a.Category)
+	addBool("shouldMoveToTrash", a.MoveToTrash)
+	return props
 }
