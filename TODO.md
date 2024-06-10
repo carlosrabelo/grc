@@ -81,7 +81,7 @@
 - [x] Wire `--format gmail` to `gmail.GenerateGmailXML()` pipeline
 - [x] Update `resolveOutputPath()` to use `.gmail.xml` extension for gmail format
 - [x] Update help text and tests
-- [ ] Create `docs/example-gmail.yaml` with Gmail-specific criteria/action filters
+- [x] Create `docs/example-gmail.yaml` with Gmail-specific criteria/action filters
 
 ## Phase 16 — Gmail filter import (reverse)
 

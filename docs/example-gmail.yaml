@@ -1,0 +1,14 @@
+filters:
+  - name: Newsletter
+    criteria:
+      from: newsletter@example.com
+    action:
+      label: Newsletters
+      markRead: true
+
+  - name: Spam
+    criteria:
+      from: spam@example.com
+    action:
+      label: Spam
+      alwaysSpam: true
