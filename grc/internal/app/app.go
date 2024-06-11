@@ -12,8 +12,10 @@ import (
 
 	"github.com/carlosrabelo/grc/grc/internal/generate"
 	"github.com/carlosrabelo/grc/grc/internal/gmail"
+	"github.com/carlosrabelo/grc/grc/internal/importer"
 	"github.com/carlosrabelo/grc/grc/internal/loader"
 	"github.com/carlosrabelo/grc/grc/internal/save"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -35,10 +37,11 @@ Usage:
 Commands:
   atom      Generate an Atom XML feed from a YAML config
   gmail     Generate Gmail import XML from a YAML config
+  import    Import a Gmail filter XML (Google Takeout) back to YAML
   help      Show help (use "grc help <command>" for details)
   version   Show version information
 
-Common flags (available on atom, gmail):
+Common flags (available on atom, gmail, import):
   --output PATH   Explicit output path (overrides the positional argument)
   --force         Overwrite an existing output file
   --verbose       Enable verbose logging
@@ -47,10 +50,12 @@ Common flags (available on atom, gmail):
 Default output paths:
   atom      <input>.xml          (cfg/x.yaml -> cfg/x.xml)
   gmail     <input>.gmail.xml    (cfg/x.yaml -> cfg/x.gmail.xml)
+  import    <input>.yaml         (takeout.xml -> takeout.yaml)
 
 Examples:
   grc atom cfg/example.yaml
-  grc gmail cfg/example-gmail.yaml
+  grc gmail cfg/example-gmail.yaml -o filters.xml
+  grc import takeout.xml converted.yaml
 
 Run "grc help <command>" for command-specific help.
 `
@@ -95,6 +100,26 @@ Examples:
   grc gmail cfg/example-gmail.yaml -o filters.xml --force
 `
 
+const importHelp = `Usage: grc import [flags] <input.xml> [output]
+
+Convert a Gmail filter XML export (Google Takeout) back into a YAML config
+that can be re-edited and re-exported with "grc atom" or "grc gmail".
+
+Arguments:
+  input     Gmail filter XML file (.xml). Required.
+  output    Output YAML path. Default: <input>.yaml.
+
+Flags:
+  --output PATH   Explicit output path (overrides the positional output)
+  --force         Overwrite an existing output file
+  --verbose       Enable verbose logging
+  -h, --help      Show this help message
+
+Examples:
+  grc import takeout.xml
+  grc import takeout.xml --output filters.yaml
+`
+
 const versionHelp = `Usage: grc version
 
 Print the grc version and build metadata.
@@ -106,6 +131,7 @@ type options struct {
 	verbose bool
 }
 
+// Run is the CLI entry point. It returns a process exit code.
 func Run(args []string) int {
 	if len(args) == 0 {
 		fmt.Print(rootHelp)
@@ -127,6 +153,8 @@ func Run(args []string) int {
 		return runGenerate(rest, "atom", atomHelp)
 	case "gmail":
 		return runGenerate(rest, "gmail", gmailHelp)
+	case "import":
+		return runImport(rest)
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unknown command %q\n\n", cmd)
 		fmt.Fprint(os.Stderr, rootHelp)
@@ -145,6 +173,9 @@ func runHelp(args []string) int {
 		return exitOK
 	case "gmail":
 		fmt.Print(gmailHelp)
+		return exitOK
+	case "import":
+		fmt.Print(importHelp)
 		return exitOK
 	case "version":
 		fmt.Print(versionHelp)
@@ -167,7 +198,6 @@ func runVersion(args []string) int {
 	fmt.Printf("grc version %s (built %s)\n", Version, BuildTime)
 	return exitOK
 }
-
 func runGenerate(args []string, mode, help string) int {
 	opts, positional, code := parseFlags(mode, args, help)
 	if opts == nil {
@@ -219,6 +249,52 @@ func runGenerate(args []string, mode, help string) int {
 	return exitOK
 }
 
+func runImport(args []string) int {
+	opts, positional, code := parseFlags("import", args, importHelp)
+	if opts == nil {
+		return code
+	}
+	if len(positional) == 0 {
+		fmt.Fprintln(os.Stderr, "Error: input file required")
+		fmt.Fprint(os.Stderr, importHelp)
+		return exitUsage
+	}
+
+	input := positional[0]
+	if !strings.EqualFold(filepath.Ext(input), ".xml") {
+		fmt.Fprintln(os.Stderr, "Error: import requires a .xml input file")
+		fmt.Fprint(os.Stderr, importHelp)
+		return exitUsage
+	}
+
+	output := resolveOutput(input, positionalAt(positional, 1), opts.output, "import")
+	logger := createLogger(opts.verbose)
+
+	logger("Parsing Gmail XML from %s", input)
+	cfg, err := importer.ImportGmailXML(input)
+	if err != nil {
+		return fail("Error importing Gmail XML: %v", err)
+	}
+	logger("Imported %d filters", len(cfg.Filters))
+
+	yamlData, err := yaml.Marshal(cfg)
+	if err != nil {
+		return fail("Error marshaling YAML: %v", err)
+	}
+
+	logger("Saving to %s", output)
+	written, err := save.SaveYAML(yamlData, output, opts.force)
+	if err != nil {
+		return fail("Error: %v", err)
+	}
+
+	fmt.Printf("Generated: %s\n", written)
+	return exitOK
+}
+
+// parseFlags registers the common flag set shared by atom/gmail/import.
+// Returns (nil, nil, code) when --help was shown or a parse error occurred;
+// the caller is expected to surface `code` and skip further work.
 func parseFlags(name string, args []string, help string) (*options, []string, int) {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -245,6 +321,8 @@ func parseFlags(name string, args []string, help string) (*options, []string, in
 	return &opts, fs.Args(), exitOK
 }
 
+// resolveOutput picks the final output path. Explicit --output wins; then a
+// positional output argument; otherwise a sensible default derived from input.
 func resolveOutput(input, positionalOutput, flagOutput, mode string) string {
 	if flagOutput != "" {
 		return flagOutput
@@ -253,10 +331,14 @@ func resolveOutput(input, positionalOutput, flagOutput, mode string) string {
 		return positionalOutput
 	}
 	base := strings.TrimSuffix(input, filepath.Ext(input))
-	if mode == "gmail" {
+	switch mode {
+	case "gmail":
 		return base + ".gmail.xml"
+	case "import":
+		return base + ".yaml"
+	default:
+		return base + ".xml"
 	}
-	return base + ".xml"
 }
 
 func createLogger(verbose bool) func(string, ...interface{}) {

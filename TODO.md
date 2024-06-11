@@ -88,7 +88,7 @@
 - [x] Create `grc/internal/importer/importer.go` that reads Gmail export XML (Google Takeout) and produces `[]Filter`
 - [x] Map `apps:property` criteria entries back to `GmailCriteria`
 - [x] Map `apps:property` action entries back to `GmailAction`
-- [ ] Add `--import` flag or `grc import <gmail.xml>` subcommand
+- [x] Add `--import` flag or `grc import <gmail.xml>` subcommand
 - [ ] Create `grc/internal/importer/importer_test.go` with roundtrip tests
 
 ## Phase 17 — Search query builder

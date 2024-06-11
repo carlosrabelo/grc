@@ -165,6 +165,20 @@ func TestSaveFile_CreatesDirectories(t *testing.T) {
 	}
 }
 
+func TestSaveYAML(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "filters")
+	defer func() { _ = os.Remove(path + ".yaml") }()
+
+	written, err := SaveYAML([]byte("filters: []\n"), path, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written != path+".yaml" {
+		t.Errorf("expected %q, got %q", path+".yaml", written)
+	}
+}
+
 func TestSaveFile_NilData(t *testing.T) {
 	path := filepath.Join(os.TempDir(), "save-nil-"+strings.Repeat("w", 8)+".xml")
 	defer func() { _ = os.Remove(path) }()
