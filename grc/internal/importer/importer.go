@@ -50,6 +50,32 @@ var criteriaFields = map[string]func(*types.GmailCriteria, string){
 	"smaller":     func(c *types.GmailCriteria, v string) { c.Smaller = v },
 }
 
+var actionFields = map[string]func(*types.GmailAction, string){
+	"shouldArchive":          func(a *types.GmailAction, v string) { a.Archive = boolPtr(parseBool(v)) },
+	"shouldMarkAsRead":       func(a *types.GmailAction, v string) { a.MarkRead = boolPtr(parseBool(v)) },
+	"shouldStar":             func(a *types.GmailAction, v string) { a.Star = boolPtr(parseBool(v)) },
+	"shouldDelete":           func(a *types.GmailAction, v string) { a.Delete = boolPtr(parseBool(v)) },
+	"shouldNeverSpam":        func(a *types.GmailAction, v string) { a.NeverSpam = boolPtr(parseBool(v)) },
+	"shouldAlwaysMarkAsSpam": func(a *types.GmailAction, v string) { a.AlwaysSpam = boolPtr(parseBool(v)) },
+	"forwardTo":              func(a *types.GmailAction, v string) { a.Forward = v },
+	"smartLabelToApply":      func(a *types.GmailAction, v string) { a.SmartLabel = v },
+	"shouldMoveToTrash":      func(a *types.GmailAction, v string) { a.MoveToTrash = boolPtr(parseBool(v)) },
+}
+
+var ambiguousFields = map[string]struct {
+	criteria func(*types.GmailCriteria, string)
+	action   func(*types.GmailAction, string)
+}{
+	"label": {
+		criteria: func(c *types.GmailCriteria, v string) { c.Label = v },
+		action:   func(a *types.GmailAction, v string) { a.Label = v },
+	},
+	"category": {
+		criteria: func(c *types.GmailCriteria, v string) { c.Category = v },
+		action:   func(a *types.GmailAction, v string) { a.Category = v },
+	},
+}
+
 func ImportGmailXML(path string) (*types.FiltersConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -72,15 +98,31 @@ func parseGmailXML(data []byte) (*types.FiltersConfig, error) {
 		filter := types.Filter{
 			Name:     entry.Title,
 			Criteria: &types.GmailCriteria{},
+			Action:   &types.GmailAction{},
 		}
 		hasCriteria := false
+		hasAction := false
 		for _, prop := range entry.Properties {
-			if fn, ok := criteriaFields[prop.Name]; ok {
+			name := prop.Name
+			if fn, ok := criteriaFields[name]; ok {
 				fn(filter.Criteria, prop.Value)
 				hasCriteria = true
 				continue
 			}
-			if prop.Name == "hasAttachment" {
+			if fn, ok := actionFields[name]; ok {
+				fn(filter.Action, prop.Value)
+				hasAction = true
+				continue
+			}
+			if ambig, ok := ambiguousFields[name]; ok {
+				ambig.criteria(filter.Criteria, prop.Value)
+				ambig.action(filter.Action, prop.Value)
+				hasCriteria = true
+				hasAction = true
+				continue
+			}
+			// hasAttachment is special: value is "true" or "false"
+			if name == "hasAttachment" {
 				t := parseBool(prop.Value)
 				filter.Criteria.HasAttachment = &t
 				hasCriteria = true
@@ -88,6 +130,9 @@ func parseGmailXML(data []byte) (*types.FiltersConfig, error) {
 		}
 		if !hasCriteria {
 			filter.Criteria = nil
+		}
+		if !hasAction {
+			filter.Action = nil
 		}
 		cfg.Filters = append(cfg.Filters, filter)
 	}
@@ -100,4 +145,8 @@ func parseBool(v string) bool {
 		return false
 	}
 	return b
+}
+
+func boolPtr(b bool) *bool {
+	return &b
 }
