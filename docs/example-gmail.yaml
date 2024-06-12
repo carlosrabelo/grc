@@ -6,6 +6,19 @@ filters:
       label: Newsletters
       markRead: true
 
+  - name: Support Tickets
+    criteria:
+      subject: "(help OR support OR ticket)"
+    action:
+      label: Support
+
+  - name: Invoices
+    criteria:
+      subject: "(invoice OR payment OR receipt)"
+    action:
+      label: Financeiro
+      markRead: true
+
   - name: Spam
     criteria:
       from: spam@example.com
