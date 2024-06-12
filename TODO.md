@@ -89,7 +89,7 @@
 - [x] Map `apps:property` criteria entries back to `GmailCriteria`
 - [x] Map `apps:property` action entries back to `GmailAction`
 - [x] Add `--import` flag or `grc import <gmail.xml>` subcommand
-- [ ] Create `grc/internal/importer/importer_test.go` with roundtrip tests
+- [x] Create `grc/internal/importer/importer_test.go` with roundtrip tests
 
 ## Phase 17 — Search query builder
 
