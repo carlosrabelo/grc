@@ -93,7 +93,7 @@
 
 ## Phase 17 — Search query builder
 
-- [ ] Create `grc/internal/query/query.go` with `BuildSearchURL()` that generates `https://mail.google.com/mail/u/0/#search/...` links
+- [x] Create `grc/internal/query/query.go` with `BuildSearchURL()` that generates `https://mail.google.com/mail/u/0/#search/...` links
 - [ ] Reconstruct Gmail search string from `GmailCriteria`
 - [ ] Create `grc/internal/query/query_test.go`
 
