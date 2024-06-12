@@ -104,6 +104,6 @@
 
 ## Phase 19 — Gmail integration tests
 
-- [ ] End-to-end tests: YAML → parser → gmail XML → validate XML schema
+- [x] End-to-end tests: YAML → parser → gmail XML → validate XML schema
 - [ ] Roundtrip tests: YAML → gmail XML → importer → YAML
 - [ ] Test `grc --format gmail` CLI integration
