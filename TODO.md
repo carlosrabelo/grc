@@ -100,7 +100,7 @@
 ## Phase 18 — YAML config with Gmail examples
 
 - [x] Create `docs/example-gmail.yaml` with filters using `criteria` + `action` (newsletter, support, invoices, etc.)
-- [ ] Demonstrate archive, label, star, markRead, forward, delete actions
+- [x] Demonstrate archive, label, star, markRead, forward, delete actions
 
 ## Phase 19 — Gmail integration tests
 

@@ -11,12 +11,14 @@ filters:
       subject: "(help OR support OR ticket)"
     action:
       label: Support
+      archive: true
 
   - name: Invoices
     criteria:
       subject: "(invoice OR payment OR receipt)"
     action:
       label: Financeiro
+      archive: true
       markRead: true
 
   - name: Spam
@@ -25,3 +27,99 @@ filters:
     action:
       label: Spam
       alwaysSpam: true
+
+  - name: Important Clients
+    criteria:
+      from: "@client-domain.com"
+      hasAttachment: true
+    action:
+      label: Clients
+      star: true
+      neverSpam: true
+
+  - name: Internal Deploys
+    criteria:
+      from: "@internal.example.com"
+      subject: "(deploy OR release)"
+    action:
+      label: DevOps
+      forward: ops@example.com
+
+  - name: Delete Promotions
+    criteria:
+      subject: "(discount OR promo OR sale)"
+      category: promotions
+    action:
+      label: Promotions
+      delete: true
+
+  - name: Social Notifications
+    criteria:
+      category: social
+      older_than: 30d
+    action:
+      label: Social
+      moveToTrash: true
+
+  - name: Unread Priority
+    criteria:
+      is: unread
+      from: "@important-corp.com"
+    action:
+      label: Priority
+      star: true
+
+  - name: Receipts Archive
+    criteria:
+      hasTheWord: "(receipt OR purchase)"
+      subject: "your order"
+    action:
+      label: Receipts
+      smartLabel: receipts
+      archive: true
+
+  - name: Large Attachments
+    criteria:
+      hasAttachment: true
+      larger: 10M
+    action:
+      label: Large Files
+      markRead: true
+
+  - name: Periodic Cleanup
+    criteria:
+      to: archive@example.com
+      before: 2024/01/01
+    action:
+      label: Archive
+      delete: true
+
+  - name: Snoozed FollowUp
+    criteria:
+      is: snoozed
+      newer_than: 7d
+    action:
+      label: Follow Up
+
+  - name: Team Delivered
+    criteria:
+      deliveredto: team@example.com
+      cc: manager@example.com
+    action:
+      label: Team Delivered
+
+  - name: Billing Support
+    criteria:
+      to: billing@example.com
+      bcc: finance@example.com
+    action:
+      label: Billing
+      forward: support@example.com
+
+  - name: Mailing List Filter
+    criteria:
+      list: users@list.example.com
+      in: inbox
+    action:
+      label: Mailing Lists
+      neverSpam: true
