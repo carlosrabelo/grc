@@ -5,9 +5,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/carlosrabelo/grc/grc/internal/query"
 	"github.com/carlosrabelo/grc/grc/pkg/types"
 )
 
+// GenerateFeed builds an Atom feed from the configuration without mutating it.
+// Filter-level defaults are resolved into the produced entries, leaving the
+// input cfg.Filters untouched. Filters are emitted alphabetically by their
+// destination label (action.label).
 func GenerateFeed(cfg *types.FiltersConfig) (*types.Feed, error) {
 	feed := createBaseFeed()
 	ordered := types.FiltersByLabel(cfg.Filters)
@@ -53,13 +58,23 @@ func createFeedEntry(filter *types.Filter, defaults *types.Defaults) *types.Entr
 	return entry
 }
 
+// buildFilterSummary renders a human-readable summary of the filter. Expression
+// takes precedence; otherwise we reconstruct a Gmail search string from the
+// structured criteria so the entry always carries useful context.
 func buildFilterSummary(filter *types.Filter) string {
 	var parts []string
+
 	if expr := strings.TrimSpace(filter.Expression); expr != "" {
 		parts = append(parts, fmt.Sprintf("Expression: %s", expr))
+	} else if filter.Criteria != nil {
+		if s := query.BuildSearchString(filter.Criteria); s != "" {
+			parts = append(parts, fmt.Sprintf("Search: %s", s))
+		}
 	}
+
 	for _, p := range filter.Properties {
 		parts = append(parts, fmt.Sprintf("%s: %s", p.Name, p.Value))
 	}
+
 	return strings.Join(parts, "\n")
 }
