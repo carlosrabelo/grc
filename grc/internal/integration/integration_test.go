@@ -2,9 +2,12 @@ package integration
 
 import (
 	"encoding/xml"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/carlosrabelo/grc/grc/internal/gmail"
+	"github.com/carlosrabelo/grc/grc/internal/importer"
 	"github.com/carlosrabelo/grc/grc/internal/loader"
 	"github.com/carlosrabelo/grc/grc/internal/testutils"
 )
@@ -162,6 +165,60 @@ func TestEndToEnd_AllCriteria(t *testing.T) {
 	}
 	if len(props) != len(expected) {
 		t.Errorf("expected %d properties, got %d", len(expected), len(props))
+	}
+}
+
+func TestEndToEnd_Roundtrip(t *testing.T) {
+	yaml := `filters:
+  - name: Newsletter
+    criteria:
+      from: newsletter@example.com
+      subject: weekly
+    action:
+      archive: true
+      label: News
+      markRead: true
+  - name: Spam
+    criteria:
+      from: spam@example.com
+    action:
+      alwaysSpam: true
+      label: Spam`
+
+	path := writeTestYAML(t, yaml)
+	orig, err := loader.LoadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	xmlData, err := gmail.GenerateGmailXML(orig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	xmlPath := filepath.Join(t.TempDir(), "roundtrip.xml")
+	if err := os.WriteFile(xmlPath, xmlData, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	imported, err := importer.ImportGmailXML(xmlPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(imported.Filters) != len(orig.Filters) {
+		t.Fatalf("expected %d filters, got %d", len(orig.Filters), len(imported.Filters))
+	}
+
+	// Filters are emitted sorted by action.label; compare as sets.
+	byName := make(map[string]bool, len(orig.Filters))
+	for _, f := range orig.Filters {
+		byName[f.Name] = true
+	}
+	for _, f := range imported.Filters {
+		if !byName[f.Name] {
+			t.Errorf("unexpected filter %q after roundtrip", f.Name)
+		}
 	}
 }
 
