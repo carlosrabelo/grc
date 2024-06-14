@@ -4,8 +4,10 @@ import (
 	"encoding/xml"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/carlosrabelo/grc/grc/internal/app"
 	"github.com/carlosrabelo/grc/grc/internal/gmail"
 	"github.com/carlosrabelo/grc/grc/internal/importer"
 	"github.com/carlosrabelo/grc/grc/internal/loader"
@@ -218,6 +220,261 @@ func TestEndToEnd_Roundtrip(t *testing.T) {
 	for _, f := range imported.Filters {
 		if !byName[f.Name] {
 			t.Errorf("unexpected filter %q after roundtrip", f.Name)
+		}
+	}
+}
+
+func TestEndToEnd_CLIRoundtrip(t *testing.T) {
+	yaml := `filters:
+  - name: Support
+    criteria:
+      from: support@example.com
+      subject: help
+    action:
+      label: Support
+      archive: true`
+
+	yamlPath := writeTestYAML(t, yaml)
+	gmailPath := filepath.Join(t.TempDir(), "out.gmail.xml")
+
+	code := app.Run([]string{"gmail", yamlPath, gmailPath})
+	if code != 0 {
+		t.Fatalf("gmail generation failed: %d", code)
+	}
+	if _, err := os.Stat(gmailPath); os.IsNotExist(err) {
+		t.Fatal("gmail XML not created")
+	}
+
+	importPath := filepath.Join(t.TempDir(), "reimport.yaml")
+	code = app.Run([]string{"import", gmailPath, importPath})
+	if code != 0 {
+		t.Fatalf("import failed: %d", code)
+	}
+	if _, err := os.Stat(importPath); os.IsNotExist(err) {
+		t.Fatal("imported YAML not created")
+	}
+
+	imported, err := loader.LoadConfig(importPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(imported.Filters) != 1 {
+		t.Fatalf("expected 1 filter, got %d", len(imported.Filters))
+	}
+}
+
+func TestEndToEnd_ExampleGmailYAML(t *testing.T) {
+	path := filepath.Join("..", "..", "..", "cfg", "example-gmail.yaml")
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(abs); os.IsNotExist(err) {
+		t.Skip("example-gmail.yaml not found, skipping")
+	}
+
+	cfg, err := loader.LoadConfig(abs)
+	if err != nil {
+		t.Fatalf("loading example-gmail.yaml: %v", err)
+	}
+
+	if len(cfg.Filters) == 0 {
+		t.Fatal("expected at least one filter")
+	}
+
+	data, err := gmail.GenerateGmailXML(cfg)
+	if err != nil {
+		t.Fatalf("generating gmail xml: %v", err)
+	}
+
+	var feed gmailFeed
+	if err := xml.Unmarshal(data, &feed); err != nil {
+		t.Fatalf("valid XML: %v", err)
+	}
+
+	if len(feed.Entries) == 0 {
+		t.Fatal("expected entries in XML")
+	}
+
+	hasCriteria := false
+	hasAction := false
+	for _, entry := range feed.Entries {
+		for _, p := range entry.Properties {
+			if isCriteriaProperty(p.Name) {
+				hasCriteria = true
+			}
+			if isActionProperty(p.Name) {
+				hasAction = true
+			}
+		}
+	}
+	if !hasCriteria {
+		t.Error("no criteria properties found in output")
+	}
+	if !hasAction {
+		t.Error("no action properties found in output")
+	}
+}
+
+func TestEndToEnd_ExampleYAML_ExpressionFallback(t *testing.T) {
+	path := filepath.Join("..", "..", "..", "cfg", "example.yaml")
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(abs); os.IsNotExist(err) {
+		t.Skip("example.yaml not found, skipping")
+	}
+
+	cfg, err := loader.LoadConfig(abs)
+	if err != nil {
+		t.Fatalf("loading example.yaml: %v", err)
+	}
+
+	data, err := gmail.GenerateGmailXML(cfg)
+	if err != nil {
+		t.Fatalf("generating gmail xml from expression-based config: %v", err)
+	}
+
+	var feed gmailFeed
+	if err := xml.Unmarshal(data, &feed); err != nil {
+		t.Fatalf("valid XML: %v", err)
+	}
+
+	if len(feed.Entries) == 0 {
+		t.Fatal("expected entries")
+	}
+}
+
+func TestEndToEnd_CLIFormatAtom(t *testing.T) {
+	yaml := `filters:
+  - name: Test
+    criteria:
+      from: a@b.com
+    action:
+      label: Inbox`
+
+	yamlPath := writeTestYAML(t, yaml)
+	output := filepath.Join(t.TempDir(), "atom.xml")
+
+	code := app.Run([]string{"atom", yamlPath, output})
+	if code != 0 {
+		t.Fatalf("atom generation failed: %d", code)
+	}
+	data, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(string(data), "<feed") {
+		t.Error("expected <feed> in atom output")
+	}
+	if !strings.Contains(string(data), "<entry>") {
+		t.Error("expected <entry> in atom output")
+	}
+}
+
+func TestEndToEnd_CLIEmptyFilters(t *testing.T) {
+	yaml := `filters:`
+	yamlPath := writeTestYAML(t, yaml)
+	output := filepath.Join(t.TempDir(), "empty.gmail.xml")
+
+	code := app.Run([]string{"gmail", yamlPath, output})
+	if code != 0 {
+		t.Fatalf("expected exit 0 for empty filters, got %d", code)
+	}
+}
+
+func TestEndToEnd_CLIRejectsBadSubcommand(t *testing.T) {
+	code := app.Run([]string{"bogus"})
+	if code != 2 {
+		t.Fatalf("expected exit 2 for unknown subcommand, got %d", code)
+	}
+}
+
+func TestEndToEnd_ActionOnlyFilter(t *testing.T) {
+	yaml := `filters:
+  - name: AutoLabel
+    action:
+      label: Auto
+      markRead: true`
+
+	yamlPath := writeTestYAML(t, yaml)
+	_, err := loader.LoadConfig(yamlPath)
+	if err == nil {
+		t.Fatal("expected error for action-only filter (no criteria/expression)")
+	}
+}
+
+func TestEndToEnd_CriteriaOnlyFilter(t *testing.T) {
+	yaml := `filters:
+  - name: MatchOnly
+    criteria:
+      from: match@example.com
+      subject: alert
+    action:
+      label: Inbox`
+
+	yamlPath := writeTestYAML(t, yaml)
+	cfg, err := loader.LoadConfig(yamlPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := gmail.GenerateGmailXML(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var feed gmailFeed
+	if err := xml.Unmarshal(data, &feed); err != nil {
+		t.Fatalf("valid XML: %v", err)
+	}
+
+	names := propertyNames(feed.Entries[0].Properties)
+	if !contains(names, "from") {
+		t.Error("expected from")
+	}
+	if !contains(names, "subject") {
+		t.Error("expected subject")
+	}
+}
+
+func TestEndToEnd_SortByLabel(t *testing.T) {
+	yaml := `filters:
+  - name: Zeta
+    criteria: { from: z@x.com }
+    action: { label: "ZZ Top" }
+  - name: Alpha
+    criteria: { from: a@x.com }
+    action: { label: "AAA Service" }
+  - name: Mid
+    criteria: { from: m@x.com }
+    action: { label: "MMM Group" }`
+
+	path := writeTestYAML(t, yaml)
+	cfg, err := loader.LoadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := gmail.GenerateGmailXML(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var feed gmailFeed
+	if err := xml.Unmarshal(data, &feed); err != nil {
+		t.Fatalf("valid XML: %v", err)
+	}
+
+	if len(feed.Entries) != 3 {
+		t.Fatalf("expected 3 entries, got %d", len(feed.Entries))
+	}
+	wantOrder := []string{"Alpha", "Mid", "Zeta"}
+	for i, want := range wantOrder {
+		if feed.Entries[i].Title != want {
+			t.Errorf("entry %d: got %q, want %q (not sorted by label)", i, feed.Entries[i].Title, want)
 		}
 	}
 }

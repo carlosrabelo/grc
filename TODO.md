@@ -106,4 +106,4 @@
 
 - [x] End-to-end tests: YAML → parser → gmail XML → validate XML schema
 - [x] Roundtrip tests: YAML → gmail XML → importer → YAML
-- [ ] Test `grc --format gmail` CLI integration
+- [x] Test `grc --format gmail` CLI integration
