@@ -6,7 +6,7 @@ GRC converts YAML filter definitions into:
 
 - **Atom XML** feeds (for RSS readers, dashboards)
 - **Gmail import XML** (compatible with Google Workspace / Gmail filters import)
-- **YAML config** from Google Takeout Gmail filter XML (`--import`)
+- **YAML config** from Google Takeout Gmail filter XML (`grc import`)
 
 ## Installation
 
@@ -14,7 +14,9 @@ GRC converts YAML filter definitions into:
 git clone https://github.com/carlosrabelo/grc
 cd grc
 make build
-sudo cp bin/grc /usr/local/bin/
+make install          # ~/.local/bin
+make package          # .deb with binary at /usr/bin
+sudo dpkg -i dist/*.deb
 ```
 
 Via `go install`:

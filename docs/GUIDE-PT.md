@@ -14,7 +14,9 @@ GRC converte definições de filtros em YAML para:
 git clone https://github.com/carlosrabelo/grc
 cd grc
 make build
-sudo cp bin/grc /usr/local/bin/
+make install          # ~/.local/bin
+make package          # .deb com binário em /usr/bin
+sudo dpkg -i dist/*.deb
 ```
 
 Via `go install`:

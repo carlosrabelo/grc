@@ -20,6 +20,7 @@ credentials.json
 # Directories
 bin/*
 !bin/.gitkeep
+dist/
 
 # Files
 # Root-level binary from a misplaced `go build`; un-ignore the source directory.

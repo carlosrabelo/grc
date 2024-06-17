@@ -2,7 +2,7 @@ MAKEFLAGS += --no-print-directory
 
 .DEFAULT_GOAL := help
 
-.PHONY: build build-static clean fmt help install install-system quality test uninstall uninstall-system vet
+.PHONY: build build-static clean deb fmt help install lint package quality test uninstall vet
 
 BINARY_NAME := grc
 VERSION    := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -33,6 +33,8 @@ fmt: ## Format code
 vet: ## Run go vet
 	@go vet ./...
 
+lint: vet ## Run linter (go vet)
+
 quality: ## Run all quality checks
 	@./.make/quality.sh
 
@@ -42,11 +44,10 @@ clean: ## Remove build artifacts
 install: ## Install to ~/.local/bin (requires prior make build)
 	@./.make/install.sh
 
-install-system: ## Install to /usr/local/bin (requires prior make build; sudo only for copy)
-	@SYSTEM=1 ./.make/install.sh
-
 uninstall: ## Remove from ~/.local/bin (sudo only if needed)
 	@./.make/uninstall.sh
 
-uninstall-system: ## Remove from /usr/local/bin (sudo only if needed)
-	@SYSTEM=1 ./.make/uninstall.sh
+package: ## Build a .deb into dist/ (requires prior make build)
+	@./.make/package.sh
+
+deb: package ## Alias for package

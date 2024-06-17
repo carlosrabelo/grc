@@ -28,13 +28,13 @@ cd grc
 make build
 ```
 
-Install to `~/.local/bin` (default), or system-wide to `/usr/local/bin` (sudo only for the copy):
+Install to `~/.local/bin` (default), or set `PREFIX` for a custom prefix. System-wide install is via a `.deb`:
 
 ```bash
 make install
-make install-system
 make uninstall
-make uninstall-system
+make package
+sudo dpkg -i dist/*.deb
 ```
 
 ### Using Go Install
@@ -178,9 +178,9 @@ make build           # Compile binary to bin/grc
 make test            # Run all tests
 make quality         # Format, vet, and test
 make install         # Install binary to ~/.local/bin
-make install-system  # Install binary to /usr/local/bin
 make uninstall       # Remove from ~/.local/bin
-make uninstall-system  # Remove from /usr/local/bin
+make package         # Build .deb into dist/ (binary at /usr/bin)
+make deb             # Alias for package
 ```
 
 ## Contributing
