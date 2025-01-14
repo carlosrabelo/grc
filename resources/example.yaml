@@ -1,0 +1,18 @@
+author:
+  name: "John Doe"
+  email: "john.doe@corp.com"
+  
+default:
+  shouldArchive: true
+  shouldNeverSpam: true
+  shouldNeverMarkAsImportant: true
+
+filters:
+  - from: "info@newsletter.shopee.com.br"
+    label: "@SaneLater"
+  - from: "email@sales.temuemail.com OR email@market.temuemail.com"
+    label: "@SaneLater"
+  - from: "contact@mailer.humblebundle.com"
+    label: "@SaneLater"
+  - from: "noreply@zenva.com"
+    label: "@SaneLater"
