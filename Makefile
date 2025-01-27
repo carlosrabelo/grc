@@ -31,3 +31,9 @@ clean:
 	@echo "Cleaning build directory..."
 	@rm -rf $(BUILD_DIR)
 	@echo "Clean completed."
+
+# Install the program
+install: build
+	@echo "Installing $(APP_NAME)..."
+	cp $(BUILD_DIR)/$(APP_NAME) /usr/local/bin/$(APP_NAME)
+	@echo "Install completed."

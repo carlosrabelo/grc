@@ -27,8 +27,8 @@ type Filter struct {
 }
 
 type Author struct {
-	Name  string `yaml:"name"`
-	Email string `yaml:"email"`
+	Name  string `yaml:"name" xml:"name"`
+	Email string `yaml:"email" xml:"email"`
 }
 
 type FiltersConfig struct {
