@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/xml"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -10,6 +11,13 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+)
+
+const (
+	AtomNS    = "http://www.w3.org/2005/Atom"
+	AppsNS    = "http://schemas.google.com/apps/2006"
+	FeedID    = "tag:mail.google.com,2008:filters:%d"
+	XMLHeader = `<?xml version="1.0" encoding="UTF-8"?>` + "\n"
 )
 
 type Defaults struct {
@@ -67,48 +75,64 @@ type Property struct {
 	Value string `xml:"value,attr"`
 }
 
-func main() {
-	if len(os.Args) < 2 {
-		log.Fatalf("Usage: %s <yaml_file>", os.Args[0])
+func checkError(err error, msg string) {
+	if err != nil {
+		log.Fatalf("%s: %v", msg, err)
+	}
+}
+
+func loadConfig(filePath string) (FiltersConfig, error) {
+	if !strings.HasSuffix(strings.ToLower(filePath), ".yaml") && !strings.HasSuffix(strings.ToLower(filePath), ".yml") {
+		return FiltersConfig{}, fmt.Errorf("input file %s must have .yaml or .yml extension", filePath)
 	}
 
-	// Input file name
-	yamlFile := os.Args[1]
-
-	// Read YAML file
-	file, err := os.ReadFile(yamlFile)
+	file, err := os.ReadFile(filePath)
 	if err != nil {
-		log.Fatalf("Error reading YAML file: %v", err)
+		return FiltersConfig{}, fmt.Errorf("reading file: %w", err)
 	}
 
 	var config FiltersConfig
-	err = yaml.Unmarshal(file, &config)
-	if err != nil {
-		log.Fatalf("Error decoding YAML: %v", err)
-	}
-
-	// Create the XML Feed
-	feed := Feed{
-		XMLNS:   "http://www.w3.org/2005/Atom",
-		Apps:    "http://schemas.google.com/apps/2006",
-		Title:   "Mail Filters",
-		ID:      "tag:mail.google.com,2008:filters:1234567890",
-		Updated: time.Now().UTC().Format(time.RFC3339),
-		Author:  config.Author,
+	if err := yaml.Unmarshal(file, &config); err != nil {
+		return FiltersConfig{}, fmt.Errorf("decoding YAML: %w", err)
 	}
 
 	for i, filter := range config.Filters {
-		// Set default values if missing in YAML
-		if filter.ShouldArchive == nil {
-			filter.ShouldArchive = &config.Defaults.ShouldArchive
+		if filter.From == "" || filter.Label == "" {
+			return FiltersConfig{}, fmt.Errorf("filter %d missing required fields: from=%q, label=%q", i, filter.From, filter.Label)
 		}
-		if filter.ShouldNeverSpam == nil {
-			filter.ShouldNeverSpam = &config.Defaults.ShouldNeverSpam
-		}
-		if filter.ShouldNeverMarkAsImportant == nil {
-			filter.ShouldNeverMarkAsImportant = &config.Defaults.ShouldNeverMarkAsImportant
-		}
+	}
 
+	return config, nil
+}
+
+func normalizeFilter(filter Filter, defaults Defaults) Filter {
+	if filter.ShouldArchive == nil {
+		filter.ShouldArchive = &defaults.ShouldArchive
+	}
+	if filter.ShouldNeverSpam == nil {
+		filter.ShouldNeverSpam = &defaults.ShouldNeverSpam
+	}
+	if filter.ShouldNeverMarkAsImportant == nil {
+		filter.ShouldNeverMarkAsImportant = &defaults.ShouldNeverMarkAsImportant
+	}
+	return filter
+}
+
+func generateFeed(config FiltersConfig) Feed {
+	feed := Feed{
+		XMLNS:   AtomNS,
+		Apps:    AppsNS,
+		Title:   "Mail Filters",
+		ID:      fmt.Sprintf(FeedID, time.Now().UnixNano()),
+		Updated: time.Now().UTC().Format(time.RFC3339),
+		Author:  config.Author,
+		Entries: make([]Entry, 0, len(config.Filters)),
+	}
+
+	boolToString := map[bool]string{true: "true", false: "false"}
+
+	for i, filter := range config.Filters {
+		filter = normalizeFilter(filter, config.Defaults)
 		entry := Entry{
 			Category: Category{Term: "filter"},
 			Title:    "Mail Filter",
@@ -118,28 +142,64 @@ func main() {
 			Properties: []Property{
 				{Name: "from", Value: filter.From},
 				{Name: "label", Value: filter.Label},
-				{Name: "shouldArchive", Value: fmt.Sprintf("%v", *filter.ShouldArchive)},
-				{Name: "shouldNeverSpam", Value: fmt.Sprintf("%v", *filter.ShouldNeverSpam)},
-				{Name: "shouldNeverMarkAsImportant", Value: fmt.Sprintf("%v", *filter.ShouldNeverMarkAsImportant)},
+				{Name: "shouldArchive", Value: boolToString[*filter.ShouldArchive]},
+				{Name: "shouldNeverSpam", Value: boolToString[*filter.ShouldNeverSpam]},
+				{Name: "shouldNeverMarkAsImportant", Value: boolToString[*filter.ShouldNeverMarkAsImportant]},
 			},
 		}
 		feed.Entries = append(feed.Entries, entry)
 	}
 
-	// Output file name (same as input, with .xml extension)
-	xmlFile := strings.TrimSuffix(yamlFile, filepath.Ext(yamlFile)) + ".xml"
+	return feed
+}
 
-	// Generate the XML
+func saveXML(filePath string, feed Feed) error {
+	if _, err := os.Stat(filePath); err == nil {
+		return fmt.Errorf("output file %s already exists", filePath)
+	}
+
 	output, err := xml.MarshalIndent(feed, "", "  ")
 	if err != nil {
-		log.Fatalf("Error generating XML: %v", err)
+		return fmt.Errorf("generating XML: %w", err)
 	}
 
-	// Save the XML file
-	err = os.WriteFile(xmlFile, output, 0644)
-	if err != nil {
-		log.Fatalf("Error saving XML file: %v", err)
+	finalOutput := []byte(XMLHeader + string(output))
+	return os.WriteFile(filePath, finalOutput, 0644)
+}
+
+func main() {
+	var outputFile string
+	var verbose bool
+	flag.StringVar(&outputFile, "output", "", "output XML file name")
+	flag.BoolVar(&verbose, "verbose", false, "enable verbose logging")
+	flag.Parse()
+
+	if len(flag.Args()) < 1 {
+		log.Fatalf("Usage: %s [-output <xml_file>] [-verbose] <yaml_file>", os.Args[0])
 	}
 
-	fmt.Println("XML file successfully generated:", xmlFile)
+	yamlFile := flag.Args()[0]
+	if verbose {
+		log.Printf("Reading YAML file: %s", yamlFile)
+	}
+
+	config, err := loadConfig(yamlFile)
+	checkError(err, "loading configuration")
+
+	if verbose {
+		log.Println("Generating XML feed")
+	}
+	feed := generateFeed(config)
+
+	if outputFile == "" {
+		outputFile = strings.TrimSuffix(yamlFile, filepath.Ext(yamlFile)) + ".xml"
+	}
+
+	if verbose {
+		log.Printf("Saving XML to: %s", outputFile)
+	}
+	err = saveXML(outputFile, feed)
+	checkError(err, "saving XML")
+
+	fmt.Println("XML file successfully generated:", outputFile)
 }
