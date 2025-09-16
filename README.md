@@ -4,7 +4,8 @@ This project provides a tool to generate XML files for configuring Gmail filters
 
 ## Features
 - Accepts a YAML input file containing author details, default values, and filter configurations.
-- Automatically applies default values to filters when optional parameters are omitted.
+- Supports a broad set of Gmail filter criteria (from, to, subject, query, attachments, etc.) and actions (archive, mark as read, star, forward, trash, labels and more).
+- Automatically applies default values to boolean actions when optional parameters are omitted.
 - Outputs a formatted XML file compatible with Gmail's filter configuration.
 
 ## Project Structure
@@ -17,6 +18,17 @@ project/
 ├── .gitignore        # Ignored files and directories
 └── README.md         # Project documentation
 ```
+
+### Available filter options
+
+Each filter entry may include any combination of the following criteria:
+- `from`, `to`, `subject`, `hasTheWord`, `doesNotHaveTheWord`, `list`, `query`, `hasAttachment`
+
+Actions that can be applied:
+- `label`, `smartLabel`, `forwardTo`
+- Boolean flags: `shouldArchive`, `shouldMarkAsRead`, `shouldStar`, `shouldNeverSpam`, `shouldAlwaysMarkAsImportant`, `shouldNeverMarkAsImportant`, `shouldTrash`
+
+All boolean flags inherit their defaults from the `default` section when omitted. Every filter must declare at least one condition and one action.
 
 ## Prerequisites
 - Go (Golang) 1.16 or later
@@ -39,14 +51,27 @@ author:
 
 default:
   shouldArchive: true
+  shouldMarkAsRead: false
+  shouldStar: false
   shouldNeverSpam: true
+  shouldAlwaysMarkAsImportant: false
   shouldNeverMarkAsImportant: false
+  shouldTrash: false
 
 filters:
   - from: "example1@example.com"
     label: "Work"
-  - from: "example2@example.com"
-    label: "Personal"
+  - to: "support@example.com"
+    subject: "[Ticket]"
+    hasAttachment: true
+    label: "Support"
+    shouldMarkAsRead: true
+    shouldStar: true
+  - query: "list:announcements.example.com"
+    label: "Announcements"
+    forwardTo: "archive@example.com"
+    shouldArchive: false
+    shouldAlwaysMarkAsImportant: true
 ```
 
 ### 3. Build the project
@@ -56,9 +81,9 @@ make build
 ```
 
 ### 4. Generate XML
-Use the provided `build-xml` Makefile target to create the XML file:
+Use the provided `generate-sample` Makefile target to create the XML file for the bundled example:
 ```bash
-make build-xml
+make generate-sample
 ```
 This will generate an XML file in the `resources/` directory based on the YAML input.
 
