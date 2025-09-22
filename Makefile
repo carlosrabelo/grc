@@ -8,6 +8,7 @@ YAML_SAMPLE := resources/example.yaml
 XML_SAMPLE := $(YAML_SAMPLE:.yaml=.xml)
 UNAME_S := $(shell uname -s 2>/dev/null)
 USER_ID := $(shell id -u 2>/dev/null)
+INSTALL_DIR ?=
 
 # Use local caches so builds also work in sandboxed environments
 GOCACHE ?= $(CURDIR)/.cache
@@ -26,7 +27,7 @@ help:
 	@echo "  make fmt              Run go fmt"
 	@echo "  make tidy             Run go mod tidy"
 	@echo "  make clean            Remove build artifacts and caches"
-	@echo "  make install          Install the binary (Linux only)"
+	@echo "  make install          Install the binary"
 
 all: build
 
@@ -56,6 +57,7 @@ clean:
 	rm -rf $(BIN_DIR) $(XML_SAMPLE) .cache .modcache
 
 install: build
+ifeq ($(INSTALL_DIR),)
 ifeq ($(OS),Windows_NT)
 	@echo "Install skipped: not required on Windows."
 else ifeq ($(UNAME_S),Linux)
@@ -69,4 +71,9 @@ else ifeq ($(UNAME_S),Linux)
 	echo "Installed $(APP_NAME) to $$prefix";
 else
 	@echo "Install skipped: only Linux installation is supported."
+endif
+else
+	@install -d "$(INSTALL_DIR)"
+	install -m 0755 "$(BIN)" "$(INSTALL_DIR)/$(APP_NAME)"
+	@echo "Installed $(APP_NAME) to $(INSTALL_DIR)"
 endif

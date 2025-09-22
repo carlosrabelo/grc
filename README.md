@@ -6,6 +6,7 @@ This project provides a tool to generate XML files for configuring Gmail filters
 - Accepts a YAML input file containing author details, default values, and filter configurations.
 - Supports a broad set of Gmail filter criteria (from, to, subject, query, attachments, etc.) and actions (archive, mark as read, star, forward, trash, labels and more).
 - Automatically applies default values to boolean actions when optional parameters are omitted.
+- Validates required author and filter fields before generating the XML.
 - Outputs a formatted XML file compatible with Gmail's filter configuration.
 
 ## Project Structure
@@ -31,7 +32,7 @@ Actions that can be applied:
 All boolean flags inherit their defaults from the `default` section when omitted. Every filter must declare at least one condition and one action.
 
 ## Prerequisites
-- Go (Golang) 1.16 or later
+- Go (Golang) 1.20 or later
 
 ## Getting Started
 
@@ -85,7 +86,7 @@ Use the provided `generate-sample` Makefile target to create the XML file for th
 ```bash
 make generate-sample
 ```
-This will generate an XML file in the `resources/` directory based on the YAML input.
+This command compiles the program (when needed) and generates an XML file next to the YAML input (for the example it will be `resources/example.xml`).
 
 ### 5. Clean up
 To remove generated files, use:
@@ -96,9 +97,9 @@ make clean
 ## Usage
 Run the compiled binary directly with a specified YAML file as input:
 ```bash
-./grc rules.yaml
+./build/grc resources/example.yaml
 ```
-The output XML file will be saved in the same directory as the input YAML file, with the `.xml` extension.
+The output XML file will be saved in the same directory as the input YAML file, with the `.xml` extension. Override the name with the `-output` flag when you need a different location.
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for more details.

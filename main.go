@@ -82,7 +82,7 @@ type Entry struct {
 	Title      string     `xml:"title"`
 	ID         string     `xml:"id"`
 	Updated    string     `xml:"updated"`
-	Content    string     `xml:"content"`
+	Content    string     `xml:"content,omitempty"`
 	Properties []Property `xml:"apps:property"`
 }
 
@@ -153,17 +153,32 @@ func loadConfig(filePath string) (FiltersConfig, error) {
 		return FiltersConfig{}, fmt.Errorf("decoding YAML: %w", err)
 	}
 
-	for i, filter := range config.Filters {
-		normalized := normalizeFilter(filter, config.Defaults)
-		if !hasCriteria(normalized) {
-			return FiltersConfig{}, fmt.Errorf("filter %d must define at least one condition", i)
-		}
-		if !hasAction(normalized) {
-			return FiltersConfig{}, fmt.Errorf("filter %d must define at least one action", i)
-		}
+	if err := validateConfig(config); err != nil {
+		return FiltersConfig{}, err
 	}
 
 	return config, nil
+}
+
+func validateConfig(config FiltersConfig) error {
+	if strings.TrimSpace(config.Author.Name) == "" {
+		return fmt.Errorf("author name is required")
+	}
+	if strings.TrimSpace(config.Author.Email) == "" {
+		return fmt.Errorf("author email is required")
+	}
+
+	for i, filter := range config.Filters {
+		normalized := normalizeFilter(filter, config.Defaults)
+		if !hasCriteria(normalized) {
+			return fmt.Errorf("filter %d must define at least one condition", i)
+		}
+		if !hasAction(normalized) {
+			return fmt.Errorf("filter %d must define at least one action", i)
+		}
+	}
+
+	return nil
 }
 
 func normalizeFilter(filter Filter, defaults Defaults) Filter {
@@ -194,8 +209,8 @@ func normalizeFilter(filter Filter, defaults Defaults) Filter {
 	return filter
 }
 
-func generateFeed(config FiltersConfig) Feed {
-	now := time.Now().UTC()
+
+func generateFeed(config FiltersConfig, now time.Time) Feed {
 	updated := now.Format(time.RFC3339)
 	feed := Feed{
 		XMLNS:   AtomNS,
@@ -296,7 +311,7 @@ func main() {
 	if verbose {
 		log.Println("Generating XML feed")
 	}
-	feed := generateFeed(config)
+	feed := generateFeed(config, time.Now().UTC())
 
 	if outputFile == "" {
 		outputFile = strings.TrimSuffix(yamlFile, filepath.Ext(yamlFile)) + ".xml"
