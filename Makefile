@@ -1,79 +1,65 @@
-# Helper targets for building and using the Gmail Rules Creator
+# Gmail Rules Creator - Build automation for Go project
 
-APP_NAME := grc
-BIN_DIR := build
-BIN := $(BIN_DIR)/$(APP_NAME)
-GO ?= go
-YAML_SAMPLE := resources/example.yaml
-XML_SAMPLE := $(YAML_SAMPLE:.yaml=.xml)
-UNAME_S := $(shell uname -s 2>/dev/null)
-USER_ID := $(shell id -u 2>/dev/null)
-INSTALL_DIR ?=
+# Variables
+GO		= go
+BIN		= grc
+SRC		= ./cmd/grc
+BUILD_DIR	= ./bin
+VERSION		= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+BUILD_TIME	= $(shell date +%Y-%m-%dT%H:%M:%S%z)
+LDFLAGS		= -s -w -X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME)
 
-# Use local caches so builds also work in sandboxed environments
-GOCACHE ?= $(CURDIR)/.cache
-GOMODCACHE ?= $(CURDIR)/.modcache
-export GOCACHE
-export GOMODCACHE
+# Default target - show help
+.DEFAULT_GOAL := help
 
-.PHONY: help all build run run-sample generate-sample fmt tidy clean install
+.PHONY: help all build clean run test fmt vet lint deps mod-tidy info
 
-help:
-	@echo "Available targets:"
-	@echo "  make build            Build the binary into $(BIN)"
-	@echo "  make run              Run the compiled binary"
-	@echo "  make run-sample       Generate XML using $(YAML_SAMPLE)"
-	@echo "  make generate-sample  Build and write $(XML_SAMPLE)"
-	@echo "  make fmt              Run go fmt"
-	@echo "  make tidy             Run go mod tidy"
-	@echo "  make clean            Remove build artifacts and caches"
-	@echo "  make install          Install the binary"
+help:	## Show this help
+	@echo "Gmail Rules Creator - Build automation"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
 
-all: build
+all: clean fmt vet build	## Clean, format, vet and build
 
-build: $(BIN)
+build:	## Build the project
+	@echo "Building $(BIN)..."
+	@mkdir -p $(BUILD_DIR)
+	CGO_ENABLED=0 $(GO) build -trimpath -tags netgo -ldflags="$(LDFLAGS)" -o $(BUILD_DIR)/$(BIN) $(SRC)
 
-$(BIN): $(shell find . -name '*.go' -print)
-	@mkdir -p $(BIN_DIR)
-	$(GO) build -o $(BIN) ./...
+clean:	## Remove build artifacts
+	@echo "Cleaning build artifacts..."
+	@rm -rf $(BUILD_DIR)
+	@$(GO) clean -cache -testcache -modcache 2>/dev/null || true
 
-run: build
-	$(BIN)
+run:	## Run the binary
+	@$(BUILD_DIR)/$(BIN)
 
-run-sample: build
-	$(BIN) $(YAML_SAMPLE)
+test:	## Run Go test suite
+	$(GO) test ./...
 
-# Generate XML for the bundled sample file to simplify manual testing
-generate-sample: build
-	$(BIN) -output $(XML_SAMPLE) $(YAML_SAMPLE)
-
-fmt:
+fmt:	## Format Go sources
 	$(GO) fmt ./...
 
-tidy:
+vet:	## Vet Go code
+	$(GO) vet ./...
+
+lint:	## Lint with golangci-lint
+	@command -v golangci-lint >/dev/null 2>&1 || { \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BUILD_DIR) latest; \
+	}
+	PATH=$(BUILD_DIR):$$PATH golangci-lint run ./...
+
+deps:	## Download Go module dependencies
+	$(GO) mod download
+
+mod-tidy:	## Tidy Go modules
 	$(GO) mod tidy
 
-clean:
-	rm -rf $(BIN_DIR) $(XML_SAMPLE) .cache .modcache
-
-install: build
-ifeq ($(INSTALL_DIR),)
-ifeq ($(OS),Windows_NT)
-	@echo "Install skipped: not required on Windows."
-else ifeq ($(UNAME_S),Linux)
-	@if [ "$(USER_ID)" = "0" ]; then \
-		prefix=/usr/local/bin; \
-	else \
-		prefix="$$HOME/.local/bin"; \
-	fi; \
-	install -d "$$prefix"; \
-	install -m 0755 "$(BIN)" "$$prefix/$(APP_NAME)"; \
-	echo "Installed $(APP_NAME) to $$prefix";
-else
-	@echo "Install skipped: only Linux installation is supported."
-endif
-else
-	@install -d "$(INSTALL_DIR)"
-	install -m 0755 "$(BIN)" "$(INSTALL_DIR)/$(APP_NAME)"
-	@echo "Installed $(APP_NAME) to $(INSTALL_DIR)"
-endif
+info:	## Show project information
+	@echo "Project: Gmail Rules Creator"
+	@echo "Binary: $(BIN)"
+	@echo "Source: $(SRC)"
+	@echo "Build: $(BUILD_DIR)"
+	@echo "Version: $(VERSION)"
+	@echo "Build Time: $(BUILD_TIME)"
+	@echo "Go version: $$($(GO) version)"

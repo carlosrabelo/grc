@@ -1,12 +1,10 @@
-package main
+package rules
 
 import (
 	"bytes"
 	"encoding/xml"
 	"errors"
-	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,12 +14,17 @@ import (
 )
 
 const (
-	AtomNS    = "http://www.w3.org/2005/Atom"
-	AppsNS    = "http://schemas.google.com/apps/2006"
-	FeedID    = "tag:mail.google.com,2008:filters:%d"
+	// AtomNS tells which XML namespace we need for Atom feeds.
+	AtomNS = "http://www.w3.org/2005/Atom"
+	// AppsNS keeps the namespace for Gmail filters.
+	AppsNS = "http://schemas.google.com/apps/2006"
+	// FeedID template used to build unique IDs.
+	FeedID = "tag:mail.google.com,2008:filters:%d"
+	// XMLHeader contains the XML declaration.
 	XMLHeader = `<?xml version="1.0" encoding="UTF-8"?>` + "\n"
 )
 
+// Defaults keeps default options the user like to reuse.
 type Defaults struct {
 	ShouldArchive               bool `yaml:"shouldArchive"`
 	ShouldMarkAsRead            bool `yaml:"shouldMarkAsRead"`
@@ -33,6 +36,7 @@ type Defaults struct {
 	HasAttachment               bool `yaml:"hasAttachment"`
 }
 
+// Filter describes a single Gmail filter as found in YAML input.
 type Filter struct {
 	From                        string `yaml:"from,omitempty"`
 	To                          string `yaml:"to,omitempty"`
@@ -54,17 +58,20 @@ type Filter struct {
 	ShouldTrash                 *bool  `yaml:"shouldTrash,omitempty"`
 }
 
+// Author keeps the author block used by Gmail export.
 type Author struct {
 	Name  string `yaml:"name" xml:"name"`
 	Email string `yaml:"email" xml:"email"`
 }
 
+// FiltersConfig tells how to build the Gmail filter feed.
 type FiltersConfig struct {
 	Author   Author   `yaml:"author"`
 	Defaults Defaults `yaml:"default"`
 	Filters  []Filter `yaml:"filters"`
 }
 
+// Feed represents the root Atom feed for Gmail filters.
 type Feed struct {
 	XMLName xml.Name `xml:"feed"`
 	XMLNS   string   `xml:"xmlns,attr"`
@@ -76,6 +83,7 @@ type Feed struct {
 	Entries []Entry  `xml:"entry"`
 }
 
+// Entry models a Gmail filter entry inside the feed.
 type Entry struct {
 	XMLName    xml.Name   `xml:"entry"`
 	Category   Category   `xml:"category"`
@@ -86,57 +94,19 @@ type Entry struct {
 	Properties []Property `xml:"apps:property"`
 }
 
+// Category identifies the filter category.
 type Category struct {
 	Term string `xml:"term,attr"`
 }
 
+// Property carries name and value from Gmail filter export.
 type Property struct {
 	Name  string `xml:"name,attr"`
 	Value string `xml:"value,attr"`
 }
 
-func checkError(err error, msg string) {
-	if err != nil {
-		log.Fatalf("%s: %v", msg, err)
-	}
-}
-
-func boolPtr(v bool) *bool {
-	return &v
-}
-
-func hasCriteria(filter Filter) bool {
-	if filter.From != "" || filter.To != "" || filter.Subject != "" || filter.HasTheWord != "" || filter.DoesNotHaveTheWord != "" || filter.List != "" || filter.Query != "" {
-		return true
-	}
-	if filter.HasAttachment != nil && *filter.HasAttachment {
-		return true
-	}
-	return false
-}
-
-func hasAction(filter Filter) bool {
-	if filter.Label != "" || filter.SmartLabel != "" || filter.ForwardTo != "" {
-		return true
-	}
-	boolActions := []*bool{
-		filter.ShouldArchive,
-		filter.ShouldMarkAsRead,
-		filter.ShouldStar,
-		filter.ShouldNeverSpam,
-		filter.ShouldAlwaysMarkAsImportant,
-		filter.ShouldNeverMarkAsImportant,
-		filter.ShouldTrash,
-	}
-	for _, action := range boolActions {
-		if action != nil && *action {
-			return true
-		}
-	}
-	return false
-}
-
-func loadConfig(filePath string) (FiltersConfig, error) {
+// LoadConfig reads and validates a YAML configuration file.
+func LoadConfig(filePath string) (FiltersConfig, error) {
 	if !strings.HasSuffix(strings.ToLower(filePath), ".yaml") && !strings.HasSuffix(strings.ToLower(filePath), ".yml") {
 		return FiltersConfig{}, fmt.Errorf("input file %s must have .yaml or .yml extension", filePath)
 	}
@@ -160,57 +130,8 @@ func loadConfig(filePath string) (FiltersConfig, error) {
 	return config, nil
 }
 
-func validateConfig(config FiltersConfig) error {
-	if strings.TrimSpace(config.Author.Name) == "" {
-		return fmt.Errorf("author name is required")
-	}
-	if strings.TrimSpace(config.Author.Email) == "" {
-		return fmt.Errorf("author email is required")
-	}
-
-	for i, filter := range config.Filters {
-		normalized := normalizeFilter(filter, config.Defaults)
-		if !hasCriteria(normalized) {
-			return fmt.Errorf("filter %d must define at least one condition", i)
-		}
-		if !hasAction(normalized) {
-			return fmt.Errorf("filter %d must define at least one action", i)
-		}
-	}
-
-	return nil
-}
-
-func normalizeFilter(filter Filter, defaults Defaults) Filter {
-	if filter.ShouldArchive == nil {
-		filter.ShouldArchive = boolPtr(defaults.ShouldArchive)
-	}
-	if filter.ShouldMarkAsRead == nil {
-		filter.ShouldMarkAsRead = boolPtr(defaults.ShouldMarkAsRead)
-	}
-	if filter.ShouldStar == nil {
-		filter.ShouldStar = boolPtr(defaults.ShouldStar)
-	}
-	if filter.ShouldNeverSpam == nil {
-		filter.ShouldNeverSpam = boolPtr(defaults.ShouldNeverSpam)
-	}
-	if filter.ShouldAlwaysMarkAsImportant == nil {
-		filter.ShouldAlwaysMarkAsImportant = boolPtr(defaults.ShouldAlwaysMarkAsImportant)
-	}
-	if filter.ShouldNeverMarkAsImportant == nil {
-		filter.ShouldNeverMarkAsImportant = boolPtr(defaults.ShouldNeverMarkAsImportant)
-	}
-	if filter.ShouldTrash == nil {
-		filter.ShouldTrash = boolPtr(defaults.ShouldTrash)
-	}
-	if filter.HasAttachment == nil && defaults.HasAttachment {
-		filter.HasAttachment = boolPtr(true)
-	}
-	return filter
-}
-
-
-func generateFeed(config FiltersConfig, now time.Time) Feed {
+// GenerateFeed builds the Atom feed ready to be marshalled into XML.
+func GenerateFeed(config FiltersConfig, now time.Time) Feed {
 	updated := now.Format(time.RFC3339)
 	feed := Feed{
 		XMLNS:   AtomNS,
@@ -273,7 +194,12 @@ func generateFeed(config FiltersConfig, now time.Time) Feed {
 	return feed
 }
 
-func saveXML(filePath string, feed Feed) error {
+// SaveXML writes the feed into disk while refusing to overwrite files.
+func SaveXML(filePath string, feed Feed) error {
+	if filepath.Ext(filePath) == "" {
+		filePath += ".xml"
+	}
+
 	if _, err := os.Stat(filePath); err == nil {
 		return fmt.Errorf("output file %s already exists", filePath)
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -286,42 +212,89 @@ func saveXML(filePath string, feed Feed) error {
 	}
 
 	finalOutput := []byte(XMLHeader + string(output))
-	return os.WriteFile(filePath, finalOutput, 0644)
+	return os.WriteFile(filePath, finalOutput, 0o644)
 }
 
-func main() {
-	var outputFile string
-	var verbose bool
-	flag.StringVar(&outputFile, "output", "", "output XML file name")
-	flag.BoolVar(&verbose, "verbose", false, "enable verbose logging")
-	flag.Parse()
-
-	if len(flag.Args()) < 1 {
-		log.Fatalf("Usage: %s [-output <xml_file>] [-verbose] <yaml_file>", os.Args[0])
+func validateConfig(config FiltersConfig) error {
+	if strings.TrimSpace(config.Author.Name) == "" {
+		return fmt.Errorf("author name is required")
+	}
+	if strings.TrimSpace(config.Author.Email) == "" {
+		return fmt.Errorf("author email is required")
 	}
 
-	yamlFile := flag.Args()[0]
-	if verbose {
-		log.Printf("Reading YAML file: %s", yamlFile)
+	for i, filter := range config.Filters {
+		normalized := normalizeFilter(filter, config.Defaults)
+		if !hasCriteria(normalized) {
+			return fmt.Errorf("filter %d must define at least one condition", i)
+		}
+		if !hasAction(normalized) {
+			return fmt.Errorf("filter %d must define at least one action", i)
+		}
 	}
 
-	config, err := loadConfig(yamlFile)
-	checkError(err, "loading configuration")
+	return nil
+}
 
-	if verbose {
-		log.Println("Generating XML feed")
+func normalizeFilter(filter Filter, defaults Defaults) Filter {
+	if filter.ShouldArchive == nil {
+		filter.ShouldArchive = boolPtr(defaults.ShouldArchive)
 	}
-	feed := generateFeed(config, time.Now().UTC())
-
-	if outputFile == "" {
-		outputFile = strings.TrimSuffix(yamlFile, filepath.Ext(yamlFile)) + ".xml"
+	if filter.ShouldMarkAsRead == nil {
+		filter.ShouldMarkAsRead = boolPtr(defaults.ShouldMarkAsRead)
 	}
-
-	if verbose {
-		log.Printf("Saving XML to: %s", outputFile)
+	if filter.ShouldStar == nil {
+		filter.ShouldStar = boolPtr(defaults.ShouldStar)
 	}
-	err = saveXML(outputFile, feed)
-	checkError(err, "saving XML")
+	if filter.ShouldNeverSpam == nil {
+		filter.ShouldNeverSpam = boolPtr(defaults.ShouldNeverSpam)
+	}
+	if filter.ShouldAlwaysMarkAsImportant == nil {
+		filter.ShouldAlwaysMarkAsImportant = boolPtr(defaults.ShouldAlwaysMarkAsImportant)
+	}
+	if filter.ShouldNeverMarkAsImportant == nil {
+		filter.ShouldNeverMarkAsImportant = boolPtr(defaults.ShouldNeverMarkAsImportant)
+	}
+	if filter.ShouldTrash == nil {
+		filter.ShouldTrash = boolPtr(defaults.ShouldTrash)
+	}
+	if filter.HasAttachment == nil && defaults.HasAttachment {
+		filter.HasAttachment = boolPtr(true)
+	}
+	return filter
+}
 
-	fmt.Println("XML file successfully generated:", outputFile)
+func hasCriteria(filter Filter) bool {
+	if filter.From != "" || filter.To != "" || filter.Subject != "" || filter.HasTheWord != "" || filter.DoesNotHaveTheWord != "" || filter.List != "" || filter.Query != "" {
+		return true
+	}
+	if filter.HasAttachment != nil && *filter.HasAttachment {
+		return true
+	}
+	return false
+}
+
+func hasAction(filter Filter) bool {
+	if filter.Label != "" || filter.SmartLabel != "" || filter.ForwardTo != "" {
+		return true
+	}
+	boolActions := []*bool{
+		filter.ShouldArchive,
+		filter.ShouldMarkAsRead,
+		filter.ShouldStar,
+		filter.ShouldNeverSpam,
+		filter.ShouldAlwaysMarkAsImportant,
+		filter.ShouldNeverMarkAsImportant,
+		filter.ShouldTrash,
+	}
+	for _, action := range boolActions {
+		if action != nil && *action {
+			return true
+		}
+	}
+	return false
+}
+
+func boolPtr(v bool) *bool {
+	return &v
 }
