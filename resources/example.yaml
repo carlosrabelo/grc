@@ -1,0 +1,27 @@
+author:
+  name: "John Doe"
+  email: "john.doe@corp.com"
+
+default:
+  shouldArchive: true
+  shouldMarkAsRead: false
+  shouldStar: false
+  shouldNeverSpam: true
+  shouldAlwaysMarkAsImportant: false
+  shouldNeverMarkAsImportant: false
+  shouldTrash: false
+
+filters:
+  - from: "info@newsletter.shopee.com.br"
+    label: "@SaneLater"
+  - to: "support@example.com"
+    subject: "[Ticket]"
+    hasAttachment: true
+    label: "@Support"
+    shouldMarkAsRead: true
+    shouldStar: true
+  - query: "list:announcements.example.com"
+    label: "@Announcements"
+    forwardTo: "archive@example.com"
+    shouldArchive: false
+    shouldAlwaysMarkAsImportant: true
