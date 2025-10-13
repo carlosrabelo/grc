@@ -8,7 +8,7 @@ A command-line tool to generate XML files for configuring Gmail filters from YAM
 - Comprehensive Criteria: Support for all Gmail filter criteria (from, to, subject, query, attachments, etc.)
 - Rich Actions: Full range of Gmail actions (archive, mark as read, star, forward, trash, labels, smart labels)
 - Default Values: Automatically applies default boolean action values when omitted
-- Validation: Validates required fields and ensures each filter has criteria and actions
+- Validation: Ensures author details, at least one filter, and that each filter has criteria and actions
 - XML Generation: Outputs properly formatted XML compatible with Gmail's filter import
 - Verbose Logging: Optional detailed logging for debugging and monitoring
 
@@ -76,10 +76,9 @@ make build
 
 ### Option 2: Install Locally
 ```bash
-make build
 make install
 ```
-This installs the `grc` binary to your local bin directory (`$HOME/.local/bin` for users, `/usr/local/bin` for root).
+This installs the `grc` binary to your local bin directory (`$HOME/.local/bin` for users, `/usr/local/bin` for root) after building it automatically.
 
 
 

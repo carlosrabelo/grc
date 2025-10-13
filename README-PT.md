@@ -8,7 +8,7 @@ Uma ferramenta de linha de comando para gerar arquivos XML de configuração de 
 - Critérios Abrangentes: Suporte para todos os critérios de filtro Gmail (from, to, subject, query, anexos, etc.)
 - Ações Completas: Gama completa de ações Gmail (arquivar, marcar como lido, estrela, encaminhar, lixeira, labels, smart labels)
 - Valores Padrão: Aplica automaticamente valores padrão de ações booleanas quando omitidas
-- Validação: Valida campos obrigatórios e garante que cada filtro tenha critérios e ações
+- Validação: Garante dados do autor, ao menos um filtro e que cada filtro tenha critérios e ações
 - Geração XML: Produz XML formatado corretamente compatível com importação de filtros Gmail
 - Log Detalhado: Log detalhado opcional para depuração e monitoramento
 
@@ -76,10 +76,9 @@ make build
 
 ### Opção 2: Instalar Localmente
 ```bash
-make build
 make install
 ```
-Isso instala o binário `grc` no seu diretório bin local (`$HOME/.local/bin` para usuários, `/usr/local/bin` para root).
+Isso instala o binário `grc` no seu diretório bin local (`$HOME/.local/bin` para usuários, `/usr/local/bin` para root) após compilar automaticamente.
 
 ## Uso
 
