@@ -13,7 +13,7 @@ build: ## Build binaries into ./bin using ldflags
 clean: ## Remove artifacts while keeping bin/.gitkeep
 	@$(MAKE) -C core clean
 
-install: ## Install grc via scripts/install.sh
+install: build ## Install grc via scripts/install.sh
 	@./scripts/install.sh grc
 
 lint: ## Execute golangci-lint when available

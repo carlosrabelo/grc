@@ -62,6 +62,21 @@ func TestLoadConfig_MissingAuthor(t *testing.T) {
 	}
 }
 
+func TestLoadConfig_EmptyFilters(t *testing.T) {
+	content := `author:
+  name: "Test User"
+  email: "test@example.com"
+filters: []
+`
+	tmpFile := createTempYAMLFile(t, content)
+	defer os.Remove(tmpFile)
+
+	_, err := LoadConfig(tmpFile)
+	if err == nil || !strings.Contains(err.Error(), "at least one filter is required") {
+		t.Errorf("Expected empty filters validation error, got: %v", err)
+	}
+}
+
 func TestGenerateFeed(t *testing.T) {
 	config := FiltersConfig{
 		Author: Author{
@@ -87,6 +102,67 @@ func TestGenerateFeed(t *testing.T) {
 	}
 	if len(feed.Entries) != 1 {
 		t.Errorf("Expected 1 entry, got %d", len(feed.Entries))
+	}
+}
+
+func TestGenerateFeed_DefaultBooleans(t *testing.T) {
+	config := FiltersConfig{
+		Author: Author{
+			Name:  "Test User",
+			Email: "test@example.com",
+		},
+		Defaults: Defaults{
+			ShouldArchive:    true,
+			ShouldMarkAsRead: false,
+			ShouldStar:       true,
+		},
+		Filters: []Filter{
+			{
+				From:  "example@test.com",
+				Label: "Test",
+			},
+		},
+	}
+
+	now := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+	feed := GenerateFeed(config, now)
+	props := feed.Entries[0].Properties
+
+	if !hasProperty(props, "shouldArchive", "true") {
+		t.Fatalf("Expected shouldArchive property with value true")
+	}
+	if !hasProperty(props, "shouldStar", "true") {
+		t.Fatalf("Expected shouldStar property with value true")
+	}
+	if hasProperty(props, "shouldMarkAsRead", "false") {
+		t.Fatalf("Did not expect shouldMarkAsRead property when default is false")
+	}
+}
+
+func TestGenerateFeed_ExplicitFalsePreserved(t *testing.T) {
+	config := FiltersConfig{
+		Author: Author{
+			Name:  "Test User",
+			Email: "test@example.com",
+		},
+		Defaults: Defaults{
+			ShouldArchive: true,
+		},
+		Filters: []Filter{
+			{
+				From:          "example@test.com",
+				Label:         "Test",
+				ShouldArchive: boolPtr(false),
+			},
+		},
+	}
+
+	now := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+	feed := GenerateFeed(config, now)
+	props := feed.Entries[0].Properties
+
+	if !hasProperty(props, "shouldArchive", "false") {
+		t.Fatalf("Expected shouldArchive property with value false when explicitly provided")
 	}
 }
 
@@ -158,4 +234,13 @@ func createTempFile(t *testing.T, name, content string) string {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
 	return tmpFile
+}
+
+func hasProperty(props []Property, name, value string) bool {
+	for _, p := range props {
+		if p.Name == name && p.Value == value {
+			return true
+		}
+	}
+	return false
 }

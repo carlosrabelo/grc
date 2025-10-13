@@ -222,6 +222,9 @@ func validateConfig(config FiltersConfig) error {
 	if strings.TrimSpace(config.Author.Email) == "" {
 		return fmt.Errorf("author email is required")
 	}
+	if len(config.Filters) == 0 {
+		return fmt.Errorf("at least one filter is required")
+	}
 
 	for i, filter := range config.Filters {
 		normalized := normalizeFilter(filter, config.Defaults)
@@ -237,30 +240,21 @@ func validateConfig(config FiltersConfig) error {
 }
 
 func normalizeFilter(filter Filter, defaults Defaults) Filter {
-	if filter.ShouldArchive == nil {
-		filter.ShouldArchive = boolPtr(defaults.ShouldArchive)
+	applyDefault := func(target **bool, defaultValue bool) {
+		if *target == nil && defaultValue {
+			*target = boolPtr(true)
+		}
 	}
-	if filter.ShouldMarkAsRead == nil {
-		filter.ShouldMarkAsRead = boolPtr(defaults.ShouldMarkAsRead)
-	}
-	if filter.ShouldStar == nil {
-		filter.ShouldStar = boolPtr(defaults.ShouldStar)
-	}
-	if filter.ShouldNeverSpam == nil {
-		filter.ShouldNeverSpam = boolPtr(defaults.ShouldNeverSpam)
-	}
-	if filter.ShouldAlwaysMarkAsImportant == nil {
-		filter.ShouldAlwaysMarkAsImportant = boolPtr(defaults.ShouldAlwaysMarkAsImportant)
-	}
-	if filter.ShouldNeverMarkAsImportant == nil {
-		filter.ShouldNeverMarkAsImportant = boolPtr(defaults.ShouldNeverMarkAsImportant)
-	}
-	if filter.ShouldTrash == nil {
-		filter.ShouldTrash = boolPtr(defaults.ShouldTrash)
-	}
-	if filter.HasAttachment == nil && defaults.HasAttachment {
-		filter.HasAttachment = boolPtr(true)
-	}
+
+	applyDefault(&filter.ShouldArchive, defaults.ShouldArchive)
+	applyDefault(&filter.ShouldMarkAsRead, defaults.ShouldMarkAsRead)
+	applyDefault(&filter.ShouldStar, defaults.ShouldStar)
+	applyDefault(&filter.ShouldNeverSpam, defaults.ShouldNeverSpam)
+	applyDefault(&filter.ShouldAlwaysMarkAsImportant, defaults.ShouldAlwaysMarkAsImportant)
+	applyDefault(&filter.ShouldNeverMarkAsImportant, defaults.ShouldNeverMarkAsImportant)
+	applyDefault(&filter.ShouldTrash, defaults.ShouldTrash)
+	applyDefault(&filter.HasAttachment, defaults.HasAttachment)
+
 	return filter
 }
 
