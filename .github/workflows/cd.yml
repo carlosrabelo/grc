@@ -11,10 +11,11 @@ jobs:
   prepare:
     name: Prepare Metadata
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref_type == 'tag' && contains(github.ref, 'refs/tags/')
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
       release_name: ${{ steps.meta.outputs.release_name }}
-      is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
+      is_prerelease: ${{ needs.prepare.outputs.is_prerelease }}
       build_time: ${{ steps.meta.outputs.build_time }}
     steps:
       - name: Checkout code
@@ -28,17 +29,9 @@ jobs:
           set -euo pipefail
 
           BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-
-          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
-            TAG="${GITHUB_REF_NAME}"
-            RELEASE_NAME="grc ${TAG}"
-            IS_PRERELEASE=false
-          else
-            COMMIT_HASH="$(git rev-parse --short=7 HEAD)"
-            TAG="test-${COMMIT_HASH}"
-            RELEASE_NAME="grc test ${COMMIT_HASH}"
-            IS_PRERELEASE=true
-          fi
+          TAG="${GITHUB_REF_NAME}"
+          RELEASE_NAME="grc ${TAG}"
+          IS_PRERELEASE=false
 
           {
             echo "tag=${TAG}"
@@ -51,6 +44,7 @@ jobs:
     name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
     needs: prepare
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref_type == 'tag' && contains(github.ref, 'refs/tags/')
     strategy:
       matrix:
         include:
@@ -126,6 +120,7 @@ jobs:
       - prepare
       - build
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref_type == 'tag' && contains(github.ref, 'refs/tags/')
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
