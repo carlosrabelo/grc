@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [ draft ]
-  pull_request:
-    branches: [ draft, master ]
+
+permissions:
+  contents: read
 
 jobs:
   test:
