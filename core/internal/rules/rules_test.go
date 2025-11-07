@@ -2,10 +2,11 @@ package rules
 
 import (
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/carlosrabelo/grc/core/internal/testutils"
 )
 
 func TestLoadConfig_ValidConfig(t *testing.T) {
@@ -19,10 +20,8 @@ filters:
     label: "Test"
     shouldArchive: true
 `
-	tmpFile := createTempYAMLFile(t, content)
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
 
 	config, err := LoadConfig(tmpFile)
 	if err != nil {
@@ -41,10 +40,8 @@ filters:
 }
 
 func TestLoadConfig_InvalidExtension(t *testing.T) {
-	tmpFile := createTempFile(t, "test.txt", "content")
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempFile(t, "test.txt", "content")
+	defer testutils.CleanupFile(tmpFile)
 
 	_, err := LoadConfig(tmpFile)
 	if err == nil || !strings.Contains(err.Error(), "must have .yaml or .yml extension") {
@@ -57,10 +54,8 @@ func TestLoadConfig_MissingAuthor(t *testing.T) {
   - from: "example@test.com"
     label: "Test"
 `
-	tmpFile := createTempYAMLFile(t, content)
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
 
 	_, err := LoadConfig(tmpFile)
 	if err == nil || !strings.Contains(err.Error(), "author name is required") {
@@ -74,10 +69,8 @@ func TestLoadConfig_EmptyFilters(t *testing.T) {
   email: "test@example.com"
 filters: []
 `
-	tmpFile := createTempYAMLFile(t, content)
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
 
 	_, err := LoadConfig(tmpFile)
 	if err == nil || !strings.Contains(err.Error(), "at least one filter is required") {
@@ -160,7 +153,7 @@ func TestGenerateFeed_ExplicitFalsePreserved(t *testing.T) {
 			{
 				From:          "example@test.com",
 				Label:         "Test",
-				ShouldArchive: boolPtr(false),
+				ShouldArchive: testutils.BoolPtr(false),
 			},
 		},
 	}
@@ -175,10 +168,8 @@ func TestGenerateFeed_ExplicitFalsePreserved(t *testing.T) {
 }
 
 func TestSaveXML_FileExists(t *testing.T) {
-	tmpFile := createTempFile(t, "existing.xml", "existing content")
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempFile(t, "existing.xml", "existing content")
+	defer testutils.CleanupFile(tmpFile)
 
 	feed := Feed{Title: "Test"}
 	err := SaveXML(tmpFile, feed, false)
@@ -188,10 +179,8 @@ func TestSaveXML_FileExists(t *testing.T) {
 }
 
 func TestSaveXML_FileExistsWithForce(t *testing.T) {
-	tmpFile := createTempFile(t, "existing.xml", "existing content")
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempFile(t, "existing.xml", "existing content")
+	defer testutils.CleanupFile(tmpFile)
 
 	feed := Feed{Title: "Test"}
 	err := SaveXML(tmpFile, feed, true)
@@ -218,7 +207,7 @@ func TestHasCriteria(t *testing.T) {
 		{"Empty filter", Filter{}, false},
 		{"Has from", Filter{From: "test@example.com"}, true},
 		{"Has subject", Filter{Subject: "Test"}, true},
-		{"Has attachment", Filter{HasAttachment: boolPtr(true)}, true},
+		{"Has attachment", Filter{HasAttachment: testutils.BoolPtr(true)}, true},
 	}
 
 	for _, tt := range tests {
@@ -239,8 +228,8 @@ func TestHasAction(t *testing.T) {
 	}{
 		{"Empty filter", Filter{}, false},
 		{"Has label", Filter{Label: "TestLabel"}, true},
-		{"Should archive", Filter{ShouldArchive: boolPtr(true)}, true},
-		{"Should mark as read", Filter{ShouldMarkAsRead: boolPtr(true)}, true},
+		{"Should archive", Filter{ShouldArchive: testutils.BoolPtr(true)}, true},
+		{"Should mark as read", Filter{ShouldMarkAsRead: testutils.BoolPtr(true)}, true},
 	}
 
 	for _, tt := range tests {
@@ -292,7 +281,7 @@ func TestGenerateFeed_HasAttachmentExplicit(t *testing.T) {
 			{
 				From:          "example@test.com",
 				Label:         "Test",
-				HasAttachment: boolPtr(false),
+				HasAttachment: testutils.BoolPtr(false),
 			},
 		},
 	}
@@ -319,7 +308,7 @@ func TestGenerateFeed_HasAttachmentNotInDefaults(t *testing.T) {
 			{
 				From:          "example@test.com",
 				Label:         "Test",
-				HasAttachment: boolPtr(true),
+				HasAttachment: testutils.BoolPtr(true),
 			},
 		},
 	}
@@ -339,11 +328,11 @@ func TestHasCriteria_WithHasAttachment(t *testing.T) {
 		filter   Filter
 		expected bool
 	}{
-		{"HasAttachment true", Filter{HasAttachment: boolPtr(true)}, true},
-		{"HasAttachment false", Filter{HasAttachment: boolPtr(false)}, false},
+		{"HasAttachment true", Filter{HasAttachment: testutils.BoolPtr(true)}, true},
+		{"HasAttachment false", Filter{HasAttachment: testutils.BoolPtr(false)}, false},
 		{"HasAttachment nil", Filter{HasAttachment: nil}, false},
-		{"HasAttachment true with other criteria", Filter{From: "test@example.com", HasAttachment: boolPtr(true)}, true},
-		{"HasAttachment false with other criteria", Filter{From: "test@example.com", HasAttachment: boolPtr(false)}, true},
+		{"HasAttachment true with other criteria", Filter{From: "test@example.com", HasAttachment: testutils.BoolPtr(true)}, true},
+		{"HasAttachment false with other criteria", Filter{From: "test@example.com", HasAttachment: testutils.BoolPtr(false)}, true},
 	}
 
 	for _, tt := range tests {
@@ -356,20 +345,7 @@ func TestHasCriteria_WithHasAttachment(t *testing.T) {
 	}
 }
 
-// Helper functions make test stay readable.
-
-func createTempYAMLFile(t *testing.T, content string) string {
-	return createTempFile(t, "test.yaml", content)
-}
-
-func createTempFile(t *testing.T, name, content string) string {
-	tmpDir := t.TempDir()
-	tmpFile := filepath.Join(tmpDir, name)
-	if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	return tmpFile
-}
+// Helper functions make tests stay readable.
 
 func hasProperty(props []Property, name, value string) bool {
 	for _, p := range props {

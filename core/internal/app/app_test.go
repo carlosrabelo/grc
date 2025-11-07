@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/carlosrabelo/grc/core/internal/testutils"
 )
 
 func TestRun_BasicExecution(t *testing.T) {
@@ -20,10 +22,8 @@ filters:
     label: "Test"
     shouldArchive: true
 `
-	tmpFile := createTempYAMLFile(t, content)
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
 
 	var stdout, stderr bytes.Buffer
 	ctx := context.Background()
@@ -38,28 +38,26 @@ filters:
 		t.Errorf("Expected success message, got: %s", output)
 	}
 
-	// Verifica se o arquivo XML foi gerado
+	// Checks if the XML file was generated
 	expectedXML := strings.TrimSuffix(tmpFile, filepath.Ext(tmpFile)) + ".xml"
 	if _, err := os.Stat(expectedXML); os.IsNotExist(err) {
 		t.Errorf("Expected XML file %s to be created", expectedXML)
 	}
-	defer func() {
-		_ = os.Remove(expectedXML)
-	}()
+	defer testutils.CleanupFile(expectedXML)
 }
 
 func TestRun_CustomOutputFile(t *testing.T) {
 	content := `author:
   name: "Test User"
   email: "test@example.com"
+default:
+  shouldArchive: false
 filters:
   - from: "example@test.com"
     label: "Test"
 `
-	tmpFile := createTempYAMLFile(t, content)
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
 
 	customOutput := filepath.Join(t.TempDir(), "custom.xml")
 	var stdout, stderr bytes.Buffer
@@ -75,7 +73,7 @@ filters:
 		t.Errorf("Expected output to contain %s, got: %s", customOutput, output)
 	}
 
-	// Verifica se o arquivo XML foi criado no local customizado
+	// Checks if the XML file was created in the custom location
 	if _, err := os.Stat(customOutput); os.IsNotExist(err) {
 		t.Errorf("Expected XML file %s to be created", customOutput)
 	}
@@ -85,14 +83,14 @@ func TestRun_VerboseLogging(t *testing.T) {
 	content := `author:
   name: "Test User"
   email: "test@example.com"
+default:
+  shouldArchive: false
 filters:
   - from: "example@test.com"
     label: "Test"
 `
-	tmpFile := createTempYAMLFile(t, content)
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
 
 	var stdout, stderr bytes.Buffer
 	ctx := context.Background()
@@ -126,17 +124,15 @@ func TestRun_NoArguments(t *testing.T) {
 		t.Fatal("Expected error when no arguments provided")
 	}
 
-	expectedError := "usage: grc [-output <xml_file>] [-verbose] <yaml_file>"
+	expectedError := "usage: grc [-output <xml_file>] [-verbose] [-force] <yaml_file>"
 	if !strings.Contains(err.Error(), expectedError) {
 		t.Errorf("Expected error to contain %s, got: %v", expectedError, err)
 	}
 }
 
 func TestRun_InvalidYAMLFile(t *testing.T) {
-	tmpFile := createTempFile(t, "invalid.yaml", "invalid: yaml: content:")
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempFile(t, "invalid.yaml", "invalid: yaml: content:")
+	defer testutils.CleanupFile(tmpFile)
 
 	var stdout, stderr bytes.Buffer
 	ctx := context.Background()
@@ -155,23 +151,21 @@ func TestRun_OutputFileAlreadyExists(t *testing.T) {
 	content := `author:
   name: "Test User"
   email: "test@example.com"
+default:
+  shouldArchive: false
 filters:
   - from: "example@test.com"
     label: "Test"
 `
-	tmpFile := createTempYAMLFile(t, content)
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
 
-	// Cria o arquivo XML de saída antes da execução
+	// Creates the output XML file before execution
 	outputFile := strings.TrimSuffix(tmpFile, filepath.Ext(tmpFile)) + ".xml"
 	if err := os.WriteFile(outputFile, []byte("existing"), 0644); err != nil {
 		t.Fatalf("Failed to create existing output file: %v", err)
 	}
-	defer func() {
-		_ = os.Remove(outputFile)
-	}()
+	defer testutils.CleanupFile(outputFile)
 
 	var stdout, stderr bytes.Buffer
 	ctx := context.Background()
@@ -190,18 +184,18 @@ func TestRun_ContextCancelled(t *testing.T) {
 	content := `author:
   name: "Test User"
   email: "test@example.com"
+default:
+  shouldArchive: false
 filters:
   - from: "example@test.com"
     label: "Test"
 `
-	tmpFile := createTempYAMLFile(t, content)
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
 
 	var stdout, stderr bytes.Buffer
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancela o contexto imediatamente
+	cancel() // Cancels the context immediately
 
 	err := Run(ctx, "test-version", "2023-01-01T00:00:00Z", []string{tmpFile}, &stdout, &stderr)
 	if err == nil {
@@ -217,23 +211,21 @@ func TestRun_ForceFlag(t *testing.T) {
 	content := `author:
   name: "Test User"
   email: "test@example.com"
+default:
+  shouldArchive: false
 filters:
   - from: "example@test.com"
     label: "Test"
 `
-	tmpFile := createTempYAMLFile(t, content)
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
 
-	// Cria o arquivo XML de saída antes da execução
+	// Creates the output XML file before execution
 	outputFile := strings.TrimSuffix(tmpFile, filepath.Ext(tmpFile)) + ".xml"
 	if err := os.WriteFile(outputFile, []byte("existing"), 0644); err != nil {
 		t.Fatalf("Failed to create existing output file: %v", err)
 	}
-	defer func() {
-		_ = os.Remove(outputFile)
-	}()
+	defer testutils.CleanupFile(outputFile)
 
 	var stdout, stderr bytes.Buffer
 	ctx := context.Background()
@@ -263,23 +255,21 @@ func TestRun_ForceFlagVerbose(t *testing.T) {
 	content := `author:
   name: "Test User"
   email: "test@example.com"
+default:
+  shouldArchive: false
 filters:
   - from: "example@test.com"
     label: "Test"
 `
-	tmpFile := createTempYAMLFile(t, content)
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
 
-	// Cria o arquivo XML de saída antes da execução
+	// Creates the output XML file before execution
 	outputFile := strings.TrimSuffix(tmpFile, filepath.Ext(tmpFile)) + ".xml"
 	if err := os.WriteFile(outputFile, []byte("existing"), 0644); err != nil {
 		t.Fatalf("Failed to create existing output file: %v", err)
 	}
-	defer func() {
-		_ = os.Remove(outputFile)
-	}()
+	defer testutils.CleanupFile(outputFile)
 
 	var stdout, stderr bytes.Buffer
 	ctx := context.Background()
@@ -295,17 +285,3 @@ filters:
 	}
 }
 
-// Helper functions
-
-func createTempYAMLFile(t *testing.T, content string) string {
-	return createTempFile(t, "test.yaml", content)
-}
-
-func createTempFile(t *testing.T, name, content string) string {
-	tmpDir := t.TempDir()
-	tmpFile := filepath.Join(tmpDir, name)
-	if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	return tmpFile
-}
