@@ -194,14 +194,16 @@ func GenerateFeed(config FiltersConfig, now time.Time) Feed {
 	return feed
 }
 
-// SaveXML write the feed into disk and refuse to overwrite files.
-func SaveXML(filePath string, feed Feed) error {
+// SaveXML write the feed into disk and refuse to overwrite files unless force is true.
+func SaveXML(filePath string, feed Feed, force bool) error {
 	if filepath.Ext(filePath) == "" {
 		filePath += ".xml"
 	}
 
 	if _, err := os.Stat(filePath); err == nil {
-		return fmt.Errorf("output file %s already exists", filePath)
+		if !force {
+			return fmt.Errorf("output file %s already exists", filePath)
+		}
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("checking output file: %w", err)
 	}

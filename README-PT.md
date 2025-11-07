@@ -62,6 +62,157 @@ Cada filtro deve incluir pelo menos uma ação:
 
 Ações booleanas herdam padrões da seção `default` quando não especificadas.
 
+## Melhores Práticas de YAML Avançado
+
+### Múltiplos Filtros
+Organize filtros relacionados em grupos lógicos para facilitar manutenção:
+
+```yaml
+author:
+  name: "João Silva"
+  email: "joao.silva@empresa.com"
+
+default:
+  shouldArchive: true
+  shouldMarkAsRead: false
+
+filters:
+  # Newsletters e Marketing
+  - from: "newsletter@exemplo.com"
+    label: "@Marketing"
+  - from: "promo@loja.com.br"
+    label: "@Promoções"
+    shouldTrash: true
+
+  # Work-related
+  - to: "equipe@empresa.com"
+    subject: "[URGENTE]"
+    label: "@Urgente"
+    shouldMarkAsRead: false
+    shouldStar: true
+  - query: "from:cliente.com AND hasAttachment"
+    label: "@Clientes"
+    hasAttachment: true
+
+  # Listas de Discussão
+  - list: "announcements.opensource.org"
+    label: "@OpenSource"
+    shouldArchive: false
+    shouldAlwaysMarkAsImportant: true
+```
+
+### Labels Compostos e Hierarquia
+Use convenções de nomenclatura para organizar labels:
+
+```yaml
+filters:
+  # Labels com prefixos para organização
+  - from: "github@noreply.github.com"
+    label: "@Dev/GitHub"
+  - from: "jenkins@empresa.com"
+    label: "@Dev/CI-CD"
+  - subject: "[FATURA]"
+    label: "@Financeiro/Faturas"
+  - query: "invoice OR receipt OR nota fiscal"
+    label: "@Financeiro/Documentos"
+```
+
+### Critérios Complexos com Query
+Aproveite o poder das queries do Gmail:
+
+```yaml
+filters:
+  # Emails com anexos específicos
+  - query: "has:attachment filename:pdf"
+    label: "@Documentos/PDF"
+    hasAttachment: true
+
+  # Combinações de critérios
+  - query: "from:(cliente1.com OR cliente2.com) subject:(proposta OR contrato)"
+    label: "@Clientes/Propostas"
+    shouldStar: true
+
+  # Exclusões específicas
+  - query: "list:anuncios.com -subject:(cancelar unsubscribe)"
+    label: "@Anuncios"
+    shouldArchive: true
+```
+
+### Uso Eficiente de Defaults
+Configure defaults inteligentes para reduzir repetição:
+
+```yaml
+default:
+  shouldArchive: true        # Arquivar por padrão
+  shouldMarkAsRead: false    # Manter não lido para revisão
+  shouldNeverSpam: true      # Nunca marcar como spam
+  hasAttachment: false       # Não exigir anexos por padrão
+
+filters:
+  # Apenas override quando necessário
+  - from: "spam@suspeito.com"
+    shouldTrash: true        # Override: lixeira em vez de arquivar
+  
+  - from: "chefe@empresa.com"
+    shouldMarkAsRead: false  # Override: manter não lido
+    shouldStar: true         # Override: destacar
+    shouldArchive: false     # Override: manter na caixa de entrada
+```
+
+### Validação e Boas Práticas
+- **Sempre inclua autor**: Nome e email são obrigatórios
+- **Pelo menos um critério**: Cada filtro precisa ter `from`, `to`, `subject`, `query` ou outros
+- **Pelo menos uma ação**: `label`, `shouldArchive`, `shouldTrash`, etc.
+- **Use extensão .yaml ou .yml**: Obrigatório para validação
+- **Teste antes de importar**: Use `grc -verbose` para verificar saída
+
+### Exemplo Completo de Produção
+```yaml
+author:
+  name: "Maria Santos"
+  email: "maria.santos@corp.com"
+
+default:
+  shouldArchive: true
+  shouldMarkAsRead: true
+  shouldNeverSpam: true
+  shouldAlwaysMarkAsImportant: false
+  shouldNeverMarkAsImportant: false
+
+filters:
+  # Comunicações Internas
+  - to: "all@corp.com"
+    subject: "[ALL-HANDS]"
+    label: "@Interno/All-Hands"
+    shouldMarkAsRead: false
+    shouldAlwaysMarkAsImportant: true
+
+  # Clientes VIP
+  - query: "from:(vip1@cliente.com OR vip2@cliente.com) OR to:suporte@corp.com"
+    label: "@Clientes/VIP"
+    shouldMarkAsRead: false
+    shouldStar: true
+    shouldArchive: false
+
+  # Faturas e Financeiro
+  - subject: "(fatura|boleto|invoice|receipt)"
+    query: "has:attachment"
+    label: "@Financeiro/Pagamentos"
+    hasAttachment: true
+    shouldArchive: false
+
+  # Newsletters (batch processing)
+  - query: "list:(newsletter.tech.com OR digest.startup.com)"
+    label: "@Leitura/Newsletters"
+    shouldArchive: true
+
+  # Spam e Lixo
+  - from: "noreply@spam.com"
+    shouldTrash: true
+  - query: "subject:(viagra|lottery|winner) OR body:(click here now)"
+    shouldTrash: true
+```
+
 ## Pré-requisitos
 - Go 1.22 ou superior
 
@@ -80,6 +231,27 @@ make install
 ```
 Isso instala o binário `grc` no seu diretório bin local (`$HOME/.local/bin` para usuários, `/usr/local/bin` para root) após compilar automaticamente.
 
+### Opção 3: Instalar em Diretório Customizado
+```bash
+# Instalar em diretório customizado via variável de ambiente
+GRC_INSTALL_DIR=/opt/custom/bin make install
+
+# Ou usar o script diretamente
+GRC_INSTALL_DIR=$HOME/.local/custom-bin ./scripts/install.sh
+
+# Instalar binário com nome customizado
+make build
+./scripts/install.sh meu-grc
+```
+
+### Desinstalação
+```bash
+make uninstall
+
+# Para diretório customizado
+GRC_INSTALL_DIR=/opt/custom/bin make uninstall
+```
+
 ## Uso
 
 ### Uso Básico
@@ -90,6 +262,7 @@ grc [opções] <arquivo_yaml>
 ### Opções
 - `-output <arquivo>` - Especificar caminho do arquivo XML de saída (padrão: mesmo que entrada com extensão .xml)
 - `-verbose` - Habilitar saída de log detalhada
+- `-force` - Sobrescrever arquivo XML existente (padrão: falha se arquivo já existe)
 
 ### Exemplo de Configuração YAML
 ```yaml
@@ -132,6 +305,12 @@ grc -output meus-filtros.xml resources/example.yaml
 
 # Habilitar log detalhado
 grc -verbose resources/example.yaml
+
+# Sobrescrever arquivo XML existente
+grc --force resources/example.yaml
+
+# Combinar múltiplas opções
+grc --force --verbose -output meus-filtros.xml resources/example.yaml
 ```
 
 ## Desenvolvimento

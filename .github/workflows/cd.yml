@@ -1,7 +1,8 @@
-name: Release
+name: CD
 
 on:
   push:
+    branches: [ master ]
     tags:
       - "v*"
   workflow_dispatch:

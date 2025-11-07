@@ -20,7 +20,9 @@ filters:
     shouldArchive: true
 `
 	tmpFile := createTempYAMLFile(t, content)
-	defer os.Remove(tmpFile)
+	defer func() {
+		_ = os.Remove(tmpFile)
+	}()
 
 	config, err := LoadConfig(tmpFile)
 	if err != nil {
@@ -40,7 +42,9 @@ filters:
 
 func TestLoadConfig_InvalidExtension(t *testing.T) {
 	tmpFile := createTempFile(t, "test.txt", "content")
-	defer os.Remove(tmpFile)
+	defer func() {
+		_ = os.Remove(tmpFile)
+	}()
 
 	_, err := LoadConfig(tmpFile)
 	if err == nil || !strings.Contains(err.Error(), "must have .yaml or .yml extension") {
@@ -54,7 +58,9 @@ func TestLoadConfig_MissingAuthor(t *testing.T) {
     label: "Test"
 `
 	tmpFile := createTempYAMLFile(t, content)
-	defer os.Remove(tmpFile)
+	defer func() {
+		_ = os.Remove(tmpFile)
+	}()
 
 	_, err := LoadConfig(tmpFile)
 	if err == nil || !strings.Contains(err.Error(), "author name is required") {
@@ -69,7 +75,9 @@ func TestLoadConfig_EmptyFilters(t *testing.T) {
 filters: []
 `
 	tmpFile := createTempYAMLFile(t, content)
-	defer os.Remove(tmpFile)
+	defer func() {
+		_ = os.Remove(tmpFile)
+	}()
 
 	_, err := LoadConfig(tmpFile)
 	if err == nil || !strings.Contains(err.Error(), "at least one filter is required") {
@@ -168,12 +176,36 @@ func TestGenerateFeed_ExplicitFalsePreserved(t *testing.T) {
 
 func TestSaveXML_FileExists(t *testing.T) {
 	tmpFile := createTempFile(t, "existing.xml", "existing content")
-	defer os.Remove(tmpFile)
+	defer func() {
+		_ = os.Remove(tmpFile)
+	}()
 
 	feed := Feed{Title: "Test"}
-	err := SaveXML(tmpFile, feed)
+	err := SaveXML(tmpFile, feed, false)
 	if err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Errorf("Expected file exists error, got: %v", err)
+	}
+}
+
+func TestSaveXML_FileExistsWithForce(t *testing.T) {
+	tmpFile := createTempFile(t, "existing.xml", "existing content")
+	defer func() {
+		_ = os.Remove(tmpFile)
+	}()
+
+	feed := Feed{Title: "Test"}
+	err := SaveXML(tmpFile, feed, true)
+	if err != nil {
+		t.Errorf("Expected no error with force=true, got: %v", err)
+	}
+
+	// Verify file was overwritten
+	content, err := os.ReadFile(tmpFile)
+	if err != nil {
+		t.Fatalf("Failed to read overwritten file: %v", err)
+	}
+	if !strings.Contains(string(content), "Test") {
+		t.Errorf("Expected file to contain 'Test', got: %s", string(content))
 	}
 }
 
@@ -214,6 +246,109 @@ func TestHasAction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := hasAction(tt.filter)
+			if result != tt.expected {
+				t.Errorf("Expected %v, got %v", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestGenerateFeed_HasAttachmentDefaults(t *testing.T) {
+	config := FiltersConfig{
+		Author: Author{
+			Name:  "Test User",
+			Email: "test@example.com",
+		},
+		Defaults: Defaults{
+			HasAttachment: true,
+		},
+		Filters: []Filter{
+			{
+				From:  "example@test.com",
+				Label: "Test",
+			},
+		},
+	}
+
+	now := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+	feed := GenerateFeed(config, now)
+	props := feed.Entries[0].Properties
+
+	if !hasProperty(props, "hasAttachment", "true") {
+		t.Fatalf("Expected hasAttachment property with value true from default")
+	}
+}
+
+func TestGenerateFeed_HasAttachmentExplicit(t *testing.T) {
+	config := FiltersConfig{
+		Author: Author{
+			Name:  "Test User",
+			Email: "test@example.com",
+		},
+		Defaults: Defaults{
+			HasAttachment: true,
+		},
+		Filters: []Filter{
+			{
+				From:          "example@test.com",
+				Label:         "Test",
+				HasAttachment: boolPtr(false),
+			},
+		},
+	}
+
+	now := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+	feed := GenerateFeed(config, now)
+	props := feed.Entries[0].Properties
+
+	if !hasProperty(props, "hasAttachment", "false") {
+		t.Fatalf("Expected hasAttachment property with value false when explicitly set")
+	}
+}
+
+func TestGenerateFeed_HasAttachmentNotInDefaults(t *testing.T) {
+	config := FiltersConfig{
+		Author: Author{
+			Name:  "Test User",
+			Email: "test@example.com",
+		},
+		Defaults: Defaults{
+			ShouldArchive: true,
+		},
+		Filters: []Filter{
+			{
+				From:          "example@test.com",
+				Label:         "Test",
+				HasAttachment: boolPtr(true),
+			},
+		},
+	}
+
+	now := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+	feed := GenerateFeed(config, now)
+	props := feed.Entries[0].Properties
+
+	if !hasProperty(props, "hasAttachment", "true") {
+		t.Fatalf("Expected hasAttachment property with value true when explicitly set")
+	}
+}
+
+func TestHasCriteria_WithHasAttachment(t *testing.T) {
+	tests := []struct {
+		name     string
+		filter   Filter
+		expected bool
+	}{
+		{"HasAttachment true", Filter{HasAttachment: boolPtr(true)}, true},
+		{"HasAttachment false", Filter{HasAttachment: boolPtr(false)}, false},
+		{"HasAttachment nil", Filter{HasAttachment: nil}, false},
+		{"HasAttachment true with other criteria", Filter{From: "test@example.com", HasAttachment: boolPtr(true)}, true},
+		{"HasAttachment false with other criteria", Filter{From: "test@example.com", HasAttachment: boolPtr(false)}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := hasCriteria(tt.filter)
 			if result != tt.expected {
 				t.Errorf("Expected %v, got %v", tt.expected, result)
 			}

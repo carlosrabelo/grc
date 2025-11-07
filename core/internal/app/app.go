@@ -28,9 +28,11 @@ func Run(ctx context.Context, version, buildTime string, args []string, stdout, 
 	var (
 		outputFile string
 		verbose    bool
+		force      bool
 	)
 	fs.StringVar(&outputFile, "output", "", "output XML file name")
 	fs.BoolVar(&verbose, "verbose", false, "enable verbose logging")
+	fs.BoolVar(&force, "force", false, "overwrite existing XML file")
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -65,9 +67,13 @@ func Run(ctx context.Context, version, buildTime string, args []string, stdout, 
 	}
 
 	if verbose {
-		logger.Printf("Saving XML to: %s", outputFile)
+		if force {
+			logger.Printf("Overwriting XML to: %s", outputFile)
+		} else {
+			logger.Printf("Saving XML to: %s", outputFile)
+		}
 	}
-	if err := rules.SaveXML(outputFile, feed); err != nil {
+	if err := rules.SaveXML(outputFile, feed, force); err != nil {
 		return fmt.Errorf("saving XML: %w", err)
 	}
 

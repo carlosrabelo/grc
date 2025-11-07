@@ -80,6 +80,27 @@ make install
 ```
 This installs the `grc` binary to your local bin directory (`$HOME/.local/bin` for users, `/usr/local/bin` for root) after building it automatically.
 
+### Option 3: Install to Custom Directory
+```bash
+# Install to custom directory via environment variable
+GRC_INSTALL_DIR=/opt/custom/bin make install
+
+# Or use the script directly
+GRC_INSTALL_DIR=$HOME/.local/custom-bin ./scripts/install.sh
+
+# Install with custom binary name
+make build
+./scripts/install.sh my-grc
+```
+
+### Uninstallation
+```bash
+make uninstall
+
+# For custom directory
+GRC_INSTALL_DIR=/opt/custom/bin make uninstall
+```
+
 
 
 ## Usage
@@ -92,6 +113,7 @@ grc [options] <yaml_file>
 ### Options
 - `-output <file>` - Specify output XML file path (default: same as input with .xml extension)
 - `-verbose` - Enable detailed logging output
+- `-force` - Overwrite existing XML file (default: fails if file exists)
 
 ### Example YAML Configuration
 ```yaml
@@ -134,6 +156,12 @@ grc -output my-filters.xml resources/example.yaml
 
 # Enable verbose logging
 grc -verbose resources/example.yaml
+
+# Overwrite existing XML file
+grc --force resources/example.yaml
+
+# Combine multiple options
+grc --force --verbose -output my-filters.xml resources/example.yaml
 ```
 
 ## Development

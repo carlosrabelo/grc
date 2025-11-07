@@ -10,18 +10,49 @@ default:
   shouldAlwaysMarkAsImportant: false
   shouldNeverMarkAsImportant: false
   shouldTrash: false
+  hasAttachment: false
 
 filters:
+  # Newsletters e Marketing - arquivar automaticamente
   - from: "info@newsletter.shopee.com.br"
-    label: "@SaneLater"
+    label: "@Marketing/Newsletters"
+  - query: "list:(marketing.com OR promo.com.br)"
+    label: "@Marketing/Promoções"
+    shouldArchive: true
+
+  # Suporte e Tickets - destacar e manter na caixa de entrada
   - to: "support@example.com"
     subject: "[Ticket]"
     hasAttachment: true
-    label: "@Support"
-    shouldMarkAsRead: true
+    label: "@Suporte/Tickets"
+    shouldMarkAsRead: false
     shouldStar: true
+    shouldArchive: false
+
+  # Comunicações importantes - marcar como importante
   - query: "list:announcements.example.com"
-    label: "@Announcements"
+    label: "@Interno/Anúncios"
     forwardTo: "archive@example.com"
     shouldArchive: false
     shouldAlwaysMarkAsImportant: true
+
+  # Clientes - processamento especial com anexos
+  - query: "from:(cliente1.com OR cliente2.com) hasAttachment"
+    label: "@Clientes/Documentos"
+    hasAttachment: true
+    shouldMarkAsRead: false
+    shouldStar: true
+    shouldArchive: false
+
+  # Financeiro - capturar faturas e recibos
+  - subject: "(fatura|boleto|invoice|receipt)"
+    query: "has:attachment"
+    label: "@Financeiro/Documentos"
+    hasAttachment: true
+    shouldArchive: false
+
+  # Spam e lixo - descartar automaticamente
+  - from: "noreply@suspicious.com"
+    shouldTrash: true
+  - query: "subject:(viagra|lottery|winner)"
+    shouldTrash: true
