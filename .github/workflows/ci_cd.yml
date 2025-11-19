@@ -1,21 +1,78 @@
-name: CD
+name: CI/CD
 
 on:
   push:
+    branches: [ master, draft ]
+    tags: [ "v*" ]
+  pull_request:
     branches: [ master ]
-    tags:
-      - "v*"
   workflow_dispatch:
 
 permissions:
   contents: write
   pull-requests: write
 
+env:
+  GO_VERSION: "1.22"
+
 jobs:
-  prepare:
-    name: Prepare Metadata
+  # ============================================================================
+  # CI: Testes, Lint e Build (executa em branches e PRs, NÃO em tags)
+  # ============================================================================
+  test:
+    name: Test and Lint
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref_type == 'tag' && contains(github.ref, 'refs/tags/')
+    if: github.ref_type != 'tag'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ env.GO_VERSION }}-
+
+      - name: Download dependencies
+        run: |
+          cd core
+          go mod download
+
+      - name: Run tests
+        run: |
+          make test
+
+      - name: Run linter
+        run: |
+          cd core
+          make lint
+
+      - name: Build binary
+        run: |
+          make build
+
+      - name: Test binary execution
+        run: |
+          ./bin/grc resources/example.yaml
+          test -f resources/example.xml
+          rm resources/example.xml
+
+  # ============================================================================
+  # CD: Release (executa APENAS em tags)
+  # ============================================================================
+  prepare:
+    name: Prepare Release Metadata
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
       release_name: ${{ steps.meta.outputs.release_name }}
@@ -48,7 +105,7 @@ jobs:
     name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
     needs: prepare
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref_type == 'tag' && contains(github.ref, 'refs/tags/')
+    if: github.ref_type == 'tag'
     strategy:
       matrix:
         include:
@@ -70,8 +127,6 @@ jobs:
           - goos: windows
             goarch: arm64
             archive_ext: zip
-    env:
-      GO_VERSION: "1.22"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -124,7 +179,7 @@ jobs:
       - prepare
       - build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref_type == 'tag' && contains(github.ref, 'refs/tags/')
+    if: github.ref_type == 'tag'
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
