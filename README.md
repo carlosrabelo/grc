@@ -158,10 +158,10 @@ grc -output my-filters.xml resources/example.yaml
 grc -verbose resources/example.yaml
 
 # Overwrite existing XML file
-grc --force resources/example.yaml
+grc -force resources/example.yaml
 
 # Combine multiple options
-grc --force --verbose -output my-filters.xml resources/example.yaml
+grc -force -verbose -output my-filters.xml resources/example.yaml
 ```
 
 ## Development

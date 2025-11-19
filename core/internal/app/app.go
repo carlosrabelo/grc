@@ -19,6 +19,8 @@ type CLIFlags struct {
 	outputFile    string
 	verbose       bool
 	force         bool
+	showVersion   bool
+	showHelp      bool
 	remainingArgs []string
 }
 
@@ -33,6 +35,15 @@ func Run(ctx context.Context, version, buildTime string, args []string, stdout, 
 		return err
 	}
 
+	// Handle special flags first
+	if flags.showVersion {
+		return displayVersion(stdout, version, buildTime)
+	}
+
+	if flags.showHelp {
+		return displayHelp(stdout)
+	}
+
 	if err := validateRequiredArgs(flags); err != nil {
 		return err
 	}
@@ -40,21 +51,21 @@ func Run(ctx context.Context, version, buildTime string, args []string, stdout, 
 	yamlFile := flags.remainingArgs[0]
 	logger := createLogger(flags.verbose, stderr)
 
-	logApplicationInfo(logger, version, buildTime, yamlFile)
+	logApplicationInfo(logger, flags.verbose, version, buildTime, yamlFile)
 
 	config, err := loadConfiguration(yamlFile)
 	if err != nil {
 		return err
 	}
 
-	feed, err := generateXMLFeed(config, logger)
+	feed, err := generateXMLFeed(config, logger, flags.verbose)
 	if err != nil {
 		return err
 	}
 
 	outputFile := resolveOutputPath(yamlFile, flags.outputFile)
 
-	if err := persistXMLFile(logger, outputFile, feed, flags.force); err != nil {
+	if err := persistXMLFile(logger, flags.verbose, outputFile, feed, flags.force); err != nil {
 		return err
 	}
 
@@ -75,6 +86,8 @@ func parseCLIArgs(args []string) (*CLIFlags, error) {
 	flagSet.StringVar(&flags.outputFile, "output", "", "output XML file name")
 	flagSet.BoolVar(&flags.verbose, "verbose", false, "enable verbose logging")
 	flagSet.BoolVar(&flags.force, "force", false, "overwrite existing XML file")
+	flagSet.BoolVar(&flags.showVersion, "version", false, "show version information")
+	flagSet.BoolVar(&flags.showHelp, "help", false, "show help message")
 
 	if err := flagSet.Parse(args); err != nil {
 		return nil, err
@@ -87,7 +100,11 @@ func parseCLIArgs(args []string) (*CLIFlags, error) {
 // validateRequiredArgs checks if required arguments were provided
 func validateRequiredArgs(flags *CLIFlags) error {
 	if len(flags.remainingArgs) == 0 {
-		return errors.New("usage: grc [-output <xml_file>] [-verbose] [-force] <yaml_file>")
+		return errors.New("error: YAML file path is required\n\nUsage: grc [-output <xml_file>] [-verbose] [-force] <yaml_file>")
+	}
+	if len(flags.remainingArgs) > 1 {
+		return fmt.Errorf("error: only one YAML file can be processed at a time, got %d files: %v",
+			len(flags.remainingArgs), flags.remainingArgs)
 	}
 	return nil
 }
@@ -125,8 +142,8 @@ func loadConfiguration(yamlFile string) (rules.FiltersConfig, error) {
 }
 
 // generateXMLFeed generates the XML feed from configuration
-func generateXMLFeed(config rules.FiltersConfig, logger *log.Logger) (rules.Feed, error) {
-	logVerboseMessage(logger, "Generating XML feed")
+func generateXMLFeed(config rules.FiltersConfig, logger *log.Logger, verbose bool) (rules.Feed, error) {
+	logVerboseMessage(logger, verbose, "Generating XML feed")
 	feed := rules.GenerateFeed(config, time.Now().UTC())
 	return feed, nil
 }
@@ -141,8 +158,8 @@ func resolveOutputPath(yamlFile, outputFile string) string {
 }
 
 // persistXMLFile saves the XML file to disk
-func persistXMLFile(logger *log.Logger, outputFile string, feed rules.Feed, force bool) error {
-	logFileOperation(logger, outputFile, force)
+func persistXMLFile(logger *log.Logger, verbose bool, outputFile string, feed rules.Feed, force bool) error {
+	logFileOperation(logger, verbose, outputFile, force)
 
 	if err := rules.SaveXML(outputFile, feed, force); err != nil {
 		return fmt.Errorf("saving XML: %w", err)
@@ -156,8 +173,8 @@ func persistXMLFile(logger *log.Logger, outputFile string, feed rules.Feed, forc
 // ============================================================================
 
 // logApplicationInfo displays application information in verbose mode
-func logApplicationInfo(logger *log.Logger, version, buildTime, yamlFile string) {
-	if logger.Writer() == io.Discard {
+func logApplicationInfo(logger *log.Logger, verbose bool, version, buildTime, yamlFile string) {
+	if !verbose {
 		return
 	}
 
@@ -166,15 +183,15 @@ func logApplicationInfo(logger *log.Logger, version, buildTime, yamlFile string)
 }
 
 // logVerboseMessage displays message only in verbose mode
-func logVerboseMessage(logger *log.Logger, message string) {
-	if logger.Writer() != io.Discard {
+func logVerboseMessage(logger *log.Logger, verbose bool, message string) {
+	if verbose {
 		logger.Println(message)
 	}
 }
 
 // logFileOperation logs file operation in verbose mode
-func logFileOperation(logger *log.Logger, outputFile string, force bool) {
-	if logger.Writer() == io.Discard {
+func logFileOperation(logger *log.Logger, verbose bool, outputFile string, force bool) {
+	if !verbose {
 		return
 	}
 
@@ -191,4 +208,33 @@ func displaySuccessMessage(stdout io.Writer, outputFile string) error {
 		return fmt.Errorf("writing output message: %w", err)
 	}
 	return nil
+}
+
+// displayVersion displays version information
+func displayVersion(stdout io.Writer, version, buildTime string) error {
+	_, err := fmt.Fprintf(stdout, "GRC - Gmail Rules Creator\nVersion: %s\nBuild Time: %s\n", version, buildTime)
+	return err
+}
+
+// displayHelp displays help message
+func displayHelp(stdout io.Writer) error {
+	helpText := `GRC - Gmail Rules Creator
+
+Usage:
+  grc [options] <yaml_file>
+
+Options:
+  -output <file>   Specify output XML file path (default: same as input with .xml extension)
+  -verbose         Enable detailed logging output
+  -force           Overwrite existing XML file (default: fails if file exists)
+  -version         Show version information
+  -help            Show this help message
+
+Examples:
+  grc config.yaml
+  grc -output filters.xml config.yaml
+  grc -verbose -force config.yaml
+`
+	_, err := fmt.Fprint(stdout, helpText)
+	return err
 }

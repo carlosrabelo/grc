@@ -329,7 +329,7 @@ func TestHasCriteria_WithHasAttachment(t *testing.T) {
 		expected bool
 	}{
 		{"HasAttachment true", Filter{HasAttachment: testutils.BoolPtr(true)}, true},
-		{"HasAttachment false", Filter{HasAttachment: testutils.BoolPtr(false)}, false},
+		{"HasAttachment false", Filter{HasAttachment: testutils.BoolPtr(false)}, true}, // Fixed: false is also valid
 		{"HasAttachment nil", Filter{HasAttachment: nil}, false},
 		{"HasAttachment true with other criteria", Filter{From: "test@example.com", HasAttachment: testutils.BoolPtr(true)}, true},
 		{"HasAttachment false with other criteria", Filter{From: "test@example.com", HasAttachment: testutils.BoolPtr(false)}, true},
@@ -340,6 +340,213 @@ func TestHasCriteria_WithHasAttachment(t *testing.T) {
 			result := hasCriteria(tt.filter)
 			if result != tt.expected {
 				t.Errorf("Expected %v, got %v", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestLoadConfig_InvalidAuthorEmail(t *testing.T) {
+	content := `author:
+  name: "Test User"
+  email: "invalid-email"
+filters:
+  - from: "test@example.com"
+    label: "Test"
+`
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
+
+	_, err := LoadConfig(tmpFile)
+	if err == nil || !strings.Contains(err.Error(), "not a valid email address") {
+		t.Errorf("Expected email validation error, got: %v", err)
+	}
+}
+
+func TestLoadConfig_InvalidFilterFromEmail(t *testing.T) {
+	content := `author:
+  name: "Test User"
+  email: "valid@example.com"
+filters:
+  - from: "invalid-email"
+    label: "Test"
+`
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
+
+	_, err := LoadConfig(tmpFile)
+	if err == nil || !strings.Contains(err.Error(), "not a valid email address") {
+		t.Errorf("Expected email validation error for 'from' field, got: %v", err)
+	}
+}
+
+func TestLoadConfig_InvalidFilterToEmail(t *testing.T) {
+	content := `author:
+  name: "Test User"
+  email: "valid@example.com"
+filters:
+  - to: "invalid@"
+    label: "Test"
+`
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
+
+	_, err := LoadConfig(tmpFile)
+	if err == nil || !strings.Contains(err.Error(), "not a valid email address") {
+		t.Errorf("Expected email validation error for 'to' field, got: %v", err)
+	}
+}
+
+func TestLoadConfig_InvalidFilterForwardToEmail(t *testing.T) {
+	content := `author:
+  name: "Test User"
+  email: "valid@example.com"
+filters:
+  - query: "test"
+    forwardTo: "@invalid"
+    label: "Test"
+`
+	tmpFile := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile)
+
+	_, err := LoadConfig(tmpFile)
+	if err == nil || !strings.Contains(err.Error(), "not a valid email address") {
+		t.Errorf("Expected email validation error for 'forwardTo' field, got: %v", err)
+	}
+}
+
+func TestLoadConfig_DomainOnlyFromPattern(t *testing.T) {
+	tests := []struct {
+		name        string
+		from        string
+		shouldPass  bool
+	}{
+		{"Valid email", "user@example.com", true},
+		{"Domain with @", "@example.com", true},
+		{"Domain without @", "example.com", true},
+		{"Domain without @ (3dlab.com.br)", "3dlab.com.br", true},
+		{"Wildcard domain", "*@example.com", true},
+		{"Invalid pattern", "@@example.com", false},
+		{"Missing domain", "@", false},
+		{"Invalid domain", "@invalid", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			content := `author:
+  name: "Test User"
+  email: "valid@example.com"
+filters:
+  - from: "` + tt.from + `"
+    label: "Test"
+`
+			tmpFile := testutils.CreateTempYAMLFile(t, content)
+			defer testutils.CleanupFile(tmpFile)
+
+			_, err := LoadConfig(tmpFile)
+			if tt.shouldPass && err != nil {
+				t.Errorf("Expected config to be valid for from='%s', got error: %v", tt.from, err)
+			}
+			if !tt.shouldPass && err == nil {
+				t.Errorf("Expected validation error for from='%s', but config was accepted", tt.from)
+			}
+		})
+	}
+}
+
+func TestLoadConfig_DomainOnlyToPattern(t *testing.T) {
+	tests := []struct {
+		name        string
+		to          string
+		shouldPass  bool
+	}{
+		{"Valid email", "user@example.com", true},
+		{"Domain with @", "@example.com", true},
+		{"Domain without @", "example.com", true},
+		{"Wildcard domain", "*@example.com", true},
+		{"Invalid pattern", "@@example.com", false},
+		{"Missing domain", "@", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			content := `author:
+  name: "Test User"
+  email: "valid@example.com"
+filters:
+  - to: "` + tt.to + `"
+    label: "Test"
+`
+			tmpFile := testutils.CreateTempYAMLFile(t, content)
+			defer testutils.CleanupFile(tmpFile)
+
+			_, err := LoadConfig(tmpFile)
+			if tt.shouldPass && err != nil {
+				t.Errorf("Expected config to be valid for to='%s', got error: %v", tt.to, err)
+			}
+			if !tt.shouldPass && err == nil {
+				t.Errorf("Expected validation error for to='%s', but config was accepted", tt.to)
+			}
+		})
+	}
+}
+
+func TestLoadConfig_MultipleDomainsOrPatterns(t *testing.T) {
+	tests := []struct {
+		name       string
+		from       string
+		shouldPass bool
+	}{
+		{"Two domains with OR", "motorola.com OR motorola-mail.com", true},
+		{"Three domains with OR", "motorola.com OR motorola-mail.com OR dimomotorola.com.br", true},
+		{"Emails with OR", "user@example.com OR admin@example.com", true},
+		{"Mixed domain and email with OR", "example.com OR user@example.com", true},
+		{"Domains with @ and OR", "@example.com OR @test.com", true},
+		{"Wildcard domains with OR", "*@example.com OR *@test.com", true},
+		{"Invalid pattern in OR", "motorola.com OR invalid", false},
+		{"Empty part in OR", "motorola.com OR  OR test.com", false},
+		{"Single domain (no OR)", "motorola.com", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			content := `author:
+  name: "Test User"
+  email: "valid@example.com"
+filters:
+  - from: "` + tt.from + `"
+    label: "Test"
+`
+			tmpFile := testutils.CreateTempYAMLFile(t, content)
+			defer testutils.CleanupFile(tmpFile)
+
+			_, err := LoadConfig(tmpFile)
+			if tt.shouldPass && err != nil {
+				t.Errorf("Expected config to be valid for from='%s', got error: %v", tt.from, err)
+			}
+			if !tt.shouldPass && err == nil {
+				t.Errorf("Expected validation error for from='%s', but config was accepted", tt.from)
+			}
+		})
+	}
+}
+
+func TestHasAction_WithFalseBooleans(t *testing.T) {
+	tests := []struct {
+		name     string
+		filter   Filter
+		expected bool
+	}{
+		{"ShouldArchive false", Filter{ShouldArchive: testutils.BoolPtr(false)}, true},
+		{"ShouldTrash false", Filter{ShouldTrash: testutils.BoolPtr(false)}, true},
+		{"ShouldMarkAsRead false", Filter{ShouldMarkAsRead: testutils.BoolPtr(false)}, true},
+		{"Multiple false booleans", Filter{ShouldArchive: testutils.BoolPtr(false), ShouldTrash: testutils.BoolPtr(false)}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := hasAction(tt.filter)
+			if result != tt.expected {
+				t.Errorf("Expected %v, got %v for filter with false boolean actions", tt.expected, result)
 			}
 		})
 	}

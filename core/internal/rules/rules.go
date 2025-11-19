@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -27,6 +28,12 @@ const (
 	// XMLHeader contains the standard XML declaration
 	XMLHeader = `<?xml version="1.0" encoding="UTF-8"?>` + "\n"
 )
+
+// emailRegex is a simple regex for basic email validation
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
+// domainRegex validates domain-only patterns like example.com, @example.com or *@example.com
+var domainRegex = regexp.MustCompile(`^((\*)?@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})$`)
 
 // ============================================================================
 // Data Types - YAML Configuration
@@ -201,7 +208,12 @@ func parseYAMLContent(fileContent []byte) (FiltersConfig, error) {
 	decoder := yaml.NewDecoder(bytes.NewReader(fileContent))
 	decoder.KnownFields(true)
 	if err := decoder.Decode(&config); err != nil {
-		return FiltersConfig{}, fmt.Errorf("decoding YAML: %w", err)
+		// Try to extract line/column info from yaml.v3 error
+		var typeErr *yaml.TypeError
+		if errors.As(err, &typeErr) {
+			return FiltersConfig{}, fmt.Errorf("YAML validation error: %s", strings.Join(typeErr.Errors, "; "))
+		}
+		return FiltersConfig{}, fmt.Errorf("YAML syntax error: %w", err)
 	}
 	return config, nil
 }
@@ -227,7 +239,45 @@ func validateAuthorData(author Author) error {
 	if strings.TrimSpace(author.Email) == "" {
 		return fmt.Errorf("author email is required")
 	}
+	if !isValidEmail(author.Email) {
+		return fmt.Errorf("author email '%s' is not a valid email address", author.Email)
+	}
 	return nil
+}
+
+// isValidEmail validates email format using a simple regex
+func isValidEmail(email string) bool {
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return false
+	}
+	return emailRegex.MatchString(email)
+}
+
+// isValidEmailOrDomain validates email or domain-only patterns (e.g., @example.com, *@example.com)
+// Also supports multiple values separated by OR (e.g., "domain1.com OR domain2.com")
+func isValidEmailOrDomain(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return false
+	}
+
+	// Split by OR to support multiple values
+	parts := strings.Split(value, " OR ")
+	if len(parts) == 1 {
+		// Single value, validate directly
+		return emailRegex.MatchString(value) || domainRegex.MatchString(value)
+	}
+
+	// Multiple values, all must be valid
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" || (!emailRegex.MatchString(part) && !domainRegex.MatchString(part)) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // validateAllFilters validates all filters in the configuration
@@ -239,6 +289,17 @@ func validateAllFilters(filters []Filter, defaults Defaults) error {
 		}
 		if !hasAction(normalized) {
 			return fmt.Errorf("filter %d must define at least one action", i)
+		}
+
+		// Validate email fields if present (supports domain-only patterns like @example.com)
+		if filter.From != "" && !isValidEmailOrDomain(filter.From) {
+			return fmt.Errorf("filter %d: 'from' field '%s' is not a valid email address or domain pattern", i, filter.From)
+		}
+		if filter.To != "" && !isValidEmailOrDomain(filter.To) {
+			return fmt.Errorf("filter %d: 'to' field '%s' is not a valid email address or domain pattern", i, filter.To)
+		}
+		if filter.ForwardTo != "" && !isValidEmail(filter.ForwardTo) {
+			return fmt.Errorf("filter %d: 'forwardTo' field '%s' is not a valid email address", i, filter.ForwardTo)
 		}
 	}
 	return nil
@@ -358,7 +419,8 @@ func ensureXMLExtension(filePath string) string {
 func applyDefaults(filter Filter, defaults Defaults) Filter {
 	applyDefault := func(target **bool, defaultValue bool) {
 		if *target == nil && defaultValue {
-			*target = boolPtr(true)
+			trueVal := true
+			*target = &trueVal
 		}
 	}
 
@@ -383,8 +445,8 @@ func hasCriteria(filter Filter) bool {
 		return true
 	}
 
-	// Checks boolean criterion
-	if filter.HasAttachment != nil && *filter.HasAttachment {
+	// Checks boolean criterion (both true and false are valid)
+	if filter.HasAttachment != nil {
 		return true
 	}
 
@@ -398,7 +460,7 @@ func hasAction(filter Filter) bool {
 		return true
 	}
 
-	// Checks boolean actions
+	// Checks boolean actions (both true and false are valid actions)
 	boolActions := []*bool{
 		filter.ShouldArchive,
 		filter.ShouldMarkAsRead,
@@ -410,15 +472,10 @@ func hasAction(filter Filter) bool {
 	}
 
 	for _, action := range boolActions {
-		if action != nil && *action {
+		if action != nil {
 			return true
 		}
 	}
 
 	return false
-}
-
-// boolPtr creates a pointer to boolean
-func boolPtr(v bool) *bool {
-	return &v
 }

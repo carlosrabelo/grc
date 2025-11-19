@@ -40,7 +40,7 @@ lint: ## Run golangci-lint when available
 		mkdir -p "$(GOCACHE_DIR)"; \
 		golangci-lint run ./...; \
 	else \
-		echo "golangci-lint nao encontrado"; \
+		echo "golangci-lint not found"; \
 	fi
 
 run: ## Run the selected binary (BIN=<name>) via go run

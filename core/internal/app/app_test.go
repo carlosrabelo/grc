@@ -124,9 +124,11 @@ func TestRun_NoArguments(t *testing.T) {
 		t.Fatal("Expected error when no arguments provided")
 	}
 
-	expectedError := "usage: grc [-output <xml_file>] [-verbose] [-force] <yaml_file>"
-	if !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("Expected error to contain %s, got: %v", expectedError, err)
+	if !strings.Contains(err.Error(), "YAML file path is required") {
+		t.Errorf("Expected error to contain 'YAML file path is required', got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "Usage: grc") {
+		t.Errorf("Expected error to contain usage message, got: %v", err)
 	}
 }
 
@@ -230,10 +232,10 @@ filters:
 	var stdout, stderr bytes.Buffer
 	ctx := context.Background()
 
-	// Test with --force flag
-	err := Run(ctx, "test-version", "2023-01-01T00:00:00Z", []string{"--force", tmpFile}, &stdout, &stderr)
+	// Test with -force flag
+	err := Run(ctx, "test-version", "2023-01-01T00:00:00Z", []string{"-force", tmpFile}, &stdout, &stderr)
 	if err != nil {
-		t.Fatalf("Expected no error with --force flag, got: %v", err)
+		t.Fatalf("Expected no error with -force flag, got: %v", err)
 	}
 
 	output := stdout.String()
@@ -274,14 +276,90 @@ filters:
 	var stdout, stderr bytes.Buffer
 	ctx := context.Background()
 
-	err := Run(ctx, "test-version", "2023-01-01T00:00:00Z", []string{"--force", "--verbose", tmpFile}, &stdout, &stderr)
+	err := Run(ctx, "test-version", "2023-01-01T00:00:00Z", []string{"-force", "-verbose", tmpFile}, &stdout, &stderr)
 	if err != nil {
-		t.Fatalf("Expected no error with --force and --verbose flags, got: %v", err)
+		t.Fatalf("Expected no error with -force and -verbose flags, got: %v", err)
 	}
 
 	logOutput := stderr.String()
 	if !strings.Contains(logOutput, "Overwriting XML to:") {
 		t.Errorf("Expected log to contain 'Overwriting XML to:', got: %s", logOutput)
+	}
+}
+
+func TestRun_VersionFlag(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	ctx := context.Background()
+
+	err := Run(ctx, "1.2.3", "2023-01-01T12:00:00Z", []string{"-version"}, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("Expected no error with -version flag, got: %v", err)
+	}
+
+	output := stdout.String()
+	if !strings.Contains(output, "GRC - Gmail Rules Creator") {
+		t.Errorf("Expected version output to contain 'GRC - Gmail Rules Creator', got: %s", output)
+	}
+	if !strings.Contains(output, "Version: 1.2.3") {
+		t.Errorf("Expected version output to contain 'Version: 1.2.3', got: %s", output)
+	}
+	if !strings.Contains(output, "Build Time: 2023-01-01T12:00:00Z") {
+		t.Errorf("Expected version output to contain build time, got: %s", output)
+	}
+}
+
+func TestRun_HelpFlag(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	ctx := context.Background()
+
+	err := Run(ctx, "test-version", "2023-01-01T00:00:00Z", []string{"-help"}, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("Expected no error with -help flag, got: %v", err)
+	}
+
+	output := stdout.String()
+	expectedStrings := []string{
+		"GRC - Gmail Rules Creator",
+		"Usage:",
+		"-output",
+		"-verbose",
+		"-force",
+		"-version",
+		"-help",
+		"Examples:",
+	}
+
+	for _, expected := range expectedStrings {
+		if !strings.Contains(output, expected) {
+			t.Errorf("Expected help output to contain '%s', got: %s", expected, output)
+		}
+	}
+}
+
+func TestRun_MultipleFiles(t *testing.T) {
+	content := `author:
+  name: "Test User"
+  email: "test@example.com"
+filters:
+  - from: "test@example.com"
+    label: "Test"
+`
+	tmpFile1 := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile1)
+
+	tmpFile2 := testutils.CreateTempYAMLFile(t, content)
+	defer testutils.CleanupFile(tmpFile2)
+
+	var stdout, stderr bytes.Buffer
+	ctx := context.Background()
+
+	err := Run(ctx, "test-version", "2023-01-01T00:00:00Z", []string{tmpFile1, tmpFile2}, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("Expected error when multiple YAML files are provided")
+	}
+
+	if !strings.Contains(err.Error(), "only one YAML file can be processed at a time") {
+		t.Errorf("Expected multiple files error, got: %v", err)
 	}
 }
 
