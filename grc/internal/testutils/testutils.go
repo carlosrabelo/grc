@@ -13,12 +13,12 @@ func CreateTempFile(dir, pattern, content string) (string, error) {
 		return "", err
 	}
 	if _, err := f.WriteString(content); err != nil {
-		f.Close()
-		os.Remove(f.Name())
+		_ = f.Close()
+		_ = os.Remove(f.Name())
 		return "", err
 	}
 	if err := f.Close(); err != nil {
-		os.Remove(f.Name())
+		_ = os.Remove(f.Name())
 		return "", err
 	}
 	return f.Name(), nil
@@ -30,7 +30,7 @@ func CreateTempYAMLFile(dir, content string) (string, error) {
 
 func CleanupFile(path string) {
 	if path != "" {
-		os.Remove(path)
+		_ = os.Remove(path)
 	}
 }
 

@@ -35,8 +35,8 @@ func TestEnsureExtension(t *testing.T) {
 
 func TestCheckOverwrite_NewFile(t *testing.T) {
 	path := filepath.Join(os.TempDir(), "test-new-"+strings.Repeat("x", 10)+".xml")
-	os.Remove(path)
-	defer os.Remove(path)
+	_ = os.Remove(path)
+	defer func() { _ = os.Remove(path) }()
 
 	err := checkOverwrite(path, false)
 	if err != nil {
@@ -49,8 +49,8 @@ func TestCheckOverwrite_ExistingNoForce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
-	defer os.Remove(f.Name())
+	_ = f.Close()
+	defer func() { _ = os.Remove(f.Name()) }()
 
 	err = checkOverwrite(f.Name(), false)
 	if err == nil {
@@ -63,8 +63,8 @@ func TestCheckOverwrite_ExistingWithForce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
-	defer os.Remove(f.Name())
+	_ = f.Close()
+	defer func() { _ = os.Remove(f.Name()) }()
 
 	err = checkOverwrite(f.Name(), true)
 	if err != nil {
@@ -74,7 +74,7 @@ func TestCheckOverwrite_ExistingWithForce(t *testing.T) {
 
 func TestSaveXML_NewFile(t *testing.T) {
 	path := filepath.Join(os.TempDir(), "save-new-"+strings.Repeat("y", 10))
-	defer os.Remove(path + ".xml")
+	defer func() { _ = os.Remove(path + ".xml") }()
 
 	err := SaveXML([]byte("<feed></feed>"), path, false)
 	if err != nil {
@@ -98,8 +98,8 @@ func TestSaveXML_OverwriteProtected(t *testing.T) {
 	if _, err := f.WriteString("<old></old>"); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
-	defer os.Remove(f.Name())
+	_ = f.Close()
+	defer func() { _ = os.Remove(f.Name()) }()
 
 	err = SaveXML([]byte("<new></new>"), f.Name(), false)
 	if err == nil {
@@ -115,8 +115,8 @@ func TestSaveXML_ForceOverwrite(t *testing.T) {
 	if _, err := f.WriteString("<old></old>"); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
-	defer os.Remove(f.Name())
+	_ = f.Close()
+	defer func() { _ = os.Remove(f.Name()) }()
 
 	err = SaveXML([]byte("<new></new>"), f.Name(), true)
 	if err != nil {
@@ -135,7 +135,7 @@ func TestSaveXML_ForceOverwrite(t *testing.T) {
 func TestSaveFile_AddsXMLExtension(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "feed")
-	defer os.Remove(path + ".xml")
+	defer func() { _ = os.Remove(path + ".xml") }()
 
 	written, err := SaveFile([]byte("<feed></feed>"), path, ".xml", false)
 	if err != nil {
@@ -152,7 +152,7 @@ func TestSaveFile_AddsXMLExtension(t *testing.T) {
 
 func TestSaveFile_CreatesDirectories(t *testing.T) {
 	dir := filepath.Join(os.TempDir(), "save-nested-"+strings.Repeat("z", 8), "sub")
-	defer os.RemoveAll(filepath.Dir(dir))
+	defer func() { _ = os.RemoveAll(filepath.Dir(dir)) }()
 
 	path := filepath.Join(dir, "feed.xml")
 	_, err := SaveFile([]byte("<feed></feed>"), path, ".xml", false)
@@ -168,7 +168,7 @@ func TestSaveFile_CreatesDirectories(t *testing.T) {
 func TestSaveYAML(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "filters")
-	defer os.Remove(path + ".yaml")
+	defer func() { _ = os.Remove(path + ".yaml") }()
 
 	written, err := SaveYAML([]byte("filters: []\n"), path, false)
 	if err != nil {
@@ -181,7 +181,7 @@ func TestSaveYAML(t *testing.T) {
 
 func TestSaveFile_NilData(t *testing.T) {
 	path := filepath.Join(os.TempDir(), "save-nil-"+strings.Repeat("w", 8)+".xml")
-	defer os.Remove(path)
+	defer func() { _ = os.Remove(path) }()
 
 	_, err := SaveFile([]byte{}, path, ".xml", false)
 	if err != nil {

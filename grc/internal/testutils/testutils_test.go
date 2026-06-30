@@ -66,7 +66,7 @@ func TestCleanupFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	CleanupFile(f.Name())
 	if _, err := os.Stat(f.Name()); !os.IsNotExist(err) {

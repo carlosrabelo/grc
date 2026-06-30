@@ -1,0 +1,26 @@
+version: 2
+
+project_name: grc
+
+builds:
+  - main: ./grc/cmd/grc
+    binary: grc
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: tar.gz
+    format_overrides:
+      - goos: darwin
+        formats: zip
+
+changelog:
+  sort: asc
